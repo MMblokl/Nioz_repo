@@ -1,0 +1,235 @@
+"""
+Metagenomics workflow for estimating abundance from metagenomic shotgun reads.
+All provided samples are assumed to be replicates of each other.
+Company: NIOZ
+Internship project for Hogeschool Leiden
+Author: Mats Blokland
+"""
+
+assembly_threads = config["assembly"]["threads"]
+project = config["PROJECT"]
+
+#Hier moet de output van de laatste rule in de input staan met een expand.
+rule all:
+  input:
+    expand("{project}/metabinner/{SAMPLE}/metabinner_res/result.log", project=project, SAMPLE=config["READS"]["ids"])
+    
+
+
+##################
+# File structure #
+##################
+#This rule initates the sample structure usinig the script "init_sample.sh".
+
+rule structure:
+  input:
+    fw = config["READS"]["dir"] +"{SAMPLE}_1.fastq",
+    rv = config["READS"]["dir"] +"{SAMPLE}_2.fastq"
+  output:
+    f1="{project}/samples/{SAMPLE}/rawdata/fw.fastq",
+    f2="{project}/samples/{SAMPLE}/rawdata/rv.fastq"
+  shell:
+    "scripts/init_sample.sh {wildcards.project} {wildcards.SAMPLE} {input.fw} {input.rv}"
+
+
+############
+# Assembly #
+############
+#Assemble all read pairs using metaspades.
+
+rule assemble:
+  input:
+    fw = "{project}/samples/{SAMPLE}/rawdata/fw.fastq",
+    rv = "{project}/samples/{SAMPLE}/rawdata/rv.fastq"
+  output:
+    contigs = "{project}/metaspades/{SAMPLE}/contigs.fasta"
+  shell:
+    "metaspades.py -1 {input.fw} -2 {input.rv} "
+    "-o {wildcards.project}/metaspades/{wildcards.SAMPLE}/ "
+    "-t {assembly_threads}"
+
+mapping_threads = config["mapping"]["threads"]
+
+###########
+# Mapping #
+###########
+#There are two options for the rules.
+#
+#1. The option "replicates" is set to TRUE, which means that every read pair is
+#   aligned to every contig file. This will create a lot of alignments, which
+#   will take a very long time. This increases the amount of reference for the
+#   binning phase, so it is recommended to use this option if possible.
+#
+#2. The reads are mapped back to their own respective contigs.
+#   This is when the option "replicates" is set to False or anything else than
+#   True.
+
+min_contiglen = config["binning"]["min_contiglen"]
+
+#Remove all contigs smaller than the provided min_contiglen
+rule filter_contigs:
+  input:
+    "{project}/metaspades/{SAMPLE}/contigs.fasta"
+  output:
+    "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
+  shell:
+    "seqtk seq -L {min_contiglen} {input.contigs} > {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta"
+
+
+#Map the reads back to the contigs
+if config["mapping"]["replicates"]:
+
+  rule mapping:
+    input:
+      expand("{project}/samples/{sample2}/rawdata/fw.fastq", project=project, sample2=config["READS"]["ids"]),
+      fw = "{project}/samples/{SAMPLE}/rawdata/fw.fastq",
+      rv = "{project}/samples/{SAMPLE}/rawdata/rv.fastq",
+      contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
+    output:
+      "{project}/bbmap/{SAMPLE}/{sample2}.sam"
+    shell:
+      "bbmap.sh ref={wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta "
+      "in={input.fw} in2={input.rv} "
+      "-out={wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}.sam "
+      "-threads={mapping_threads}"
+
+  rule bam_convert:
+    input:
+      "{project}/bbmap/{SAMPLE}/{sample2}.sam"
+    output:
+      "{project}/bbmap/{SAMPLE}/{sample2}.bam"
+    shell:
+      "samtools view -b {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}.sam "
+      "-o {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}.bam"
+  
+  rule bam_sort:
+    input:
+      "{project}/bbmap/{SAMPLE}/{sample2}.bam"
+    output:
+      "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam"
+    shell:
+      "samtools sort {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}.bam "
+      "-o {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}_sorted.bam"
+  
+  rule bam_index:
+    input:
+      "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam"
+    output:
+      "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam.bai"
+    shell:
+      "samtools index -b -@ {mapping_threads} "
+      "{wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}_sorted.bam "
+      "{wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}_sorted.bam.bai"
+
+else:
+  
+  rule mapping:
+    input:
+      fw = "{project}/samples/{SAMPLE}/rawdata/fw.fastq",
+      rv = "{project}/samples/{SAMPLE}/rawdata/rv.fastq",
+      contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
+    output:
+      "{project}/bbmap/{SAMPLE}/{SAMPLE}.sam"
+    shell:
+      "bbmap.sh ref={wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta "
+      "in={input.fw} in2={input.rv} "
+      "-out={wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.sam "
+      "-threads={mapping_threads}"
+  
+  rule bam_convert:
+    input:
+      "{project}/bbmap/{SAMPLE}/{SAMPLE}.sam"
+    output:
+      "{project}/bbmap/{SAMPLE}/{SAMPLE}.bam"
+    shell:
+      "samtools view -b {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.sam "
+      "-o {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.bam"
+  
+  rule bam_sort:
+    input:
+      "{project}/bbmap/{SAMPLE}/{SAMPLE}.bam"
+    output:
+      "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam"
+    shell:
+      "samtools sort {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.bam "
+      "-o {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}_sorted.bam"
+  
+  rule bam_index:
+    input:
+      "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam"
+    output:
+      "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam.bai"
+    shell:
+      "samtools index -b -@ {mapping_threads} "
+      "{wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}_sorted.bam "
+      "{wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}_sorted.bam.bai"
+
+
+
+metabinner_path = config["binning"]["metabinner_env"]
+kmer_len = config["binning"]["kmer_len"]
+binning_threads = config["binning"]["threads"]
+###########
+# Binning #
+###########
+#Binning stuff under here yeah uh uh yeah
+# uhj yeah
+
+#Generates the contig depth file from all alignments in the bbmap dir.
+rule gen_depth:
+  input:
+    rules.bam_index.output
+  output:
+    "{project}/metabinner/{SAMPLE}/mb2_master_depth.txt"
+  shell:
+    "{metabinner_path}/bin/scripts/jgi_summarize_bam_contig_depths "
+    "--outputDepth {wildcards.project}/metabinner/{wildcards.SAMPLE}/mb2_master_depth.txt "
+    "--noIntraDepthVariance {wildcards.project}/bbmap/{wildcards.SAMPLE}/*.bam"
+
+#Generates a coverage file from the contig depth file.
+rule gen_coverage:
+  input:
+    "{project}/metabinner/{SAMPLE}/mb2_master_depth.txt"
+  output:
+    "{project}/metabinner/{SAMPLE}/coverage_profile.tsv"
+  shell:
+    """cat {wildcards.project}/metabinner/{wildcards.SAMPLE}/mb2_master_depth.txt \
+    | awk '{{if ($2>'"1000"') print $0 }}' | \
+    cut -f -1,4- > {wildcards.project}/metabinner/{wildcards.SAMPLE}/coverage_profile.tsv"""
+
+#At time of writing, the script to generate the kmer_profile has a pretty annoying error
+# that makes it so that you have to have the input file in the current working directy,
+# together with the script. This is because in the script tries to look for the
+# directory where the input file is in, and then pastes this onto the back of the input, even if
+# the directory path is already there, so it gets doubled.
+rule gen_kmerprofile:
+  input:
+    "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
+  output:
+    "{project}/metabinner/{SAMPLE}/contigs_filtered_" + config["binning"]["kmer_len"] + "_f" + config["binning"]["min_contiglen"] + ".csv"
+  run:
+    shell("mv {wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta ."),
+    shell("python3 {metabinner_path}/bin/scripts/gen_kmer.py contigs_filtered.fasta {min_contiglen} {kmer_len}"),
+    shell("mv contigs_filtered.fasta {wildcards.project}/bbmap/{wildcards.SAMPLE}"),
+    shell("mv contigs_filtered_kmer_{kmer_len}_f{min_contiglen}.csv {wildcards.project}/metabinner/{wildcards.SAMPLE}/")
+
+#The actual binning, the files are buried quite deep in a whole bunch of directories,
+# but the path is always the same so it just looks like an unnecessarily long path.
+rule binning:
+  input:
+    "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam.bai",
+    "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
+    rules.gen_kmerprofile.output
+  output:
+    "{project}/metabinner/{SAMPLE}/metabinner_res/result.log"
+  shell:
+    "run_metabinner.sh "
+    "-a {wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta "
+    "-o {wildcards.project}/metabinner/{wildcards.SAMPLE} "
+    "-d {wildcards.project}/metabinner/{wildcards.SAMPLE}/coverage_profile.tsv "
+    "-k {wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered_kmer_{kmer_len}_f{min_contiglen}.csv "
+    "-p {metabinner_path}/bin -t {binning_threads}"
+    
+
+
+

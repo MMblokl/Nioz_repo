@@ -1,0 +1,62 @@
+threads: 16
+
+###############################################
+#             Project or run name             #
+###############################################
+# The name of the project the pipeline is used#
+# for. All output will be placed in a         #
+# directory with this value.                  #
+###############################################
+PROJECT: "Base"
+
+###############################################
+#                   Samples                   #
+###############################################
+# The samples have to be paired end. ID_1 for #
+# forward reads, ID_2 for reverse reads. All  #
+# samples must be in fastq format and be      #
+# present in the directory defined in "dir"   #
+#                                             #
+# -dir:       The system path to the directory#
+#             containing the sequencing reads.#
+# -ids:       A list containing the ids of the#
+#             reads you wish to use, that are #
+#             present in the "dir" directory. #
+#                                             #
+# If you use multiple samples, these have to  #
+# be replicates of each other, which will be  #
+# used for more efficient contig binning.     #
+###############################################
+READS: 
+  ids: ["sample1", "sample2"]
+  dir: "reads/"
+
+###############################################
+#                   Assembly                  #
+###############################################
+# Assembly is done with metaSPAdes v3.14.1    #
+# -kmer_list: List of kmer sizes, must be an  #
+#             odd number and less than 128.   #
+# -memory: RAM limit in Gb for SPAdes.        #
+###############################################
+assembly:
+  kmer_list: ["auto"]
+  memory: 250
+
+
+###############################################
+#                   Binning                   #
+###############################################
+# Metagenome binning is done with MetaBinner  #
+# metabinner_env: The full filepath of the    #
+#                 location of metabinner,     #
+#                 must end with a /           #
+# min_contiglen:  The minimal size of a contig#
+#                 To be included in binning.  #
+# kmer_comp_klen: The kmer size used to       #
+#                 generate kmer-composition   #
+###############################################
+binning:
+  min_contiglen: 1000
+  kmer_comp_klen: 4
+  metabinner_env: "~/.conda/envs/MetaBinner/"

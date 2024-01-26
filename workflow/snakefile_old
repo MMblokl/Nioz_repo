@@ -1,0 +1,65 @@
+metabinner_path = config["binning"]["metabinner_env"]
+min_contiglen = config["binning"]["min_contiglen"]
+kmer_comp_len = config['binning']['kmer_comp_klen']
+
+rule all:
+  input:
+    expand("{PROJECT}/bbmap/{SAMPLE}/{sampl}_sorted.bam.bai", PROJECT=config["PROJECT"], SAMPLE=config["SAMPLES"], sampl=config["SAMPLES"]),
+    expand("{PROJECT}/metabinner/{SAMPLE}/metabinner_res/result.log", PROJECT=config["PROJECT"], SAMPLE=config["SAMPLES"])
+
+
+#Assemble the provided read pairs using metaSPAdes.
+rule assemble:
+  input:
+    fw = "{PROJECT}/samples/{SAMPLE}/rawdata/fw.fastq",
+    rv = "{PROJECT}/samples/{SAMPLE}/rawdata/rv.fastq"
+  output:
+    "{PROJECT}/metaspades/{SAMPLE}/contigs.fasta"
+  threads: {max_threads}
+  shell:
+    "metaspades.py -1 {input.fw} -2 {input.rv} -o {wildcards.PROJECT}/metaspades/{wildcards.SAMPLE}/ -t {threads}"
+
+
+#Map back the read pairs to the assembled contigs.
+#All read pairs will be mapped to every set of contigs. This is to increase the
+#quality of the binning process. The contigs are filtered so that contigs smaller
+#than 1000bp are discarded.
+rule mapping:
+  input:
+    fw = "{PROJECT}/samples/{sampl}/rawdata/fw.fastq",
+    rv = "{PROJECT}/samples/{sampl}/rawdata/rv.fastq",
+    contigs = "{PROJECT}/metaspades/{SAMPLE}/contigs.fasta"
+  output:
+    "{PROJECT}/bbmap/{SAMPLE}/{sampl}_sorted.bam.bai"
+  threads: {max_threads}
+  run:
+    shell("seqtk seq -L {min_contiglen} {input.contigs} > {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/contigs_{min_contiglen}bp.fasta")
+    shell("bbmap.sh ref={wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/contigs_{min_contiglen}bp.fasta in={input.fw} in2={input.rv} -out={wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}.sam -threads={threads}")
+    shell("samtools view -b {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}.sam -o {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}.bam")
+    shell("rm -f {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}.sam")
+    shell("samtools sort {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}.bam -o {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}_sorted.bam")
+    shell("rm -f {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}.bam")
+    shell("samtools index -b -@ {threads} {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}_sorted.bam {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/{wildcards.sampl}_sorted.bam.bai")
+
+
+#The contigs are binned into MAGs based on the alignments of every provided read
+#pair.
+rule binning:
+  input:
+    fw = "{PROJECT}/samples/{SAMPLE}/rawdata/fw.fastq",
+    rv = "{PROJECT}/samples/{SAMPLE}/rawdata/rv.fastq",
+  output:
+    "{PROJECT}/metabinner/{SAMPLE}/metabinner_res/result.log"
+  threads: {max_threads}
+  run:
+    shell("{metabinner_path}bin/scripts/jgi_summarize_bam_contig_depths --outputDepth {wildcards.PROJECT}/metabinner/{wildcards.SAMPLE}/mb2_master_depth.txt --noIntraDepthVariance {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/*.bam")
+    shell("""cat {wildcards.PROJECT}/metabinner/{wildcards.SAMPLE}/mb2_master_depth.txt | awk '{{if ($2>'"1000"') print $0 }}' | cut -f -1,4- > {wildcards.PROJECT}/metabinner/{wildcards.SAMPLE}/coverage_profile.tsv""")
+    shell("cp {metabinner_path}bin/scripts/gen_kmer.py .")
+    shell("mv {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/contigs_{min_contiglen}bp.fasta .") #Note: The file has to be moved to the same directory as the script, as there is an error in the script that makes the outputfile name have double the dirpath if the inputfile is not in the same dir.
+    shell("python3 gen_kmer.py contigs_{min_contiglen}bp.fasta {min_contiglen} {kmer_comp_len}")
+    shell("mv contigs_{min_contiglen}bp.fasta {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/")
+    shell("mv contigs_{min_contiglen}bp_{kmer_comp_len}_f{min_contiglen}.csv {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/")
+    shell("{metabinner_path}bin/run_metabinner.sh -a {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/contigs_{min_contiglen}bp.fasta -o {wildcards.PROJECT}/metabinner/{wildcards.SAMPLE} -d {wildcards.PROJECT}/metabinner/{wildcards.SAMPLE}/coverage_profile.tsv -k {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/*kmer_4_f{min_contiglen}.csv -p config[binning][metabinner_env]bin -t {threads}")
+
+
+
