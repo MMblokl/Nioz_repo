@@ -31,7 +31,7 @@ for (x in files){
   #This part catches any false peak. Sometimes the disctribution does not look good enough
   #and will result in it finding a false peak very far back onto the dataset.
   #This catch will make it only take out the first datapoint and estimate the genome size with that.
-  if(total_kmer < 10000){
+  if(total_kmer < 25000){
     breakpoint <- 2
     temp <- t[breakpoint:nrow(t),]
     max <- temp[which.max(temp$V2),1]
@@ -41,4 +41,4 @@ for (x in files){
 }
 names(estimates) = files #Add the bin file name to each estimate
 
-write.table(estimates, file = args[2])
+write.table(estimates, file = args[2], col.names=TRU)

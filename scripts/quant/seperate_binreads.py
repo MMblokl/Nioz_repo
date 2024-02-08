@@ -5,11 +5,12 @@ import sys
 #The arguments given to the script must be:
 # 1: sampleid
 # 2: bamfile
-# 3: bin file directory 
+# 3: bin file directory
 
 sampleid = sys.argv[1]
 bamfile = sys.argv[2]
 bins_dir = sys.argv[3]
+unbinned_filelocation = sys.argv[4]
 
 
 #Make a dict with bin names as the key and a list of contig ids that are in the bin
@@ -28,6 +29,18 @@ for bin in glob.glob(f"{bins_dir}/*"):
       except KeyError:
         bincontigs[bin] = [line[0][1:]]
       line = f.readline()
+
+
+#Add the contigs in given unbinned_file into the bincontigs dict to seperate
+#These as well so that they can be used later as well.
+bincontigs["unbinned"] = []
+with open(unbinned_filelocation, "r") as f:
+  line = f.readline()
+  while line != "":
+    line = line[1:].strip()
+    bincontigs["unbinned"].append(line)
+    line = f.readline()
+
 
 #Put the reads into their own files to match them to the bins.
 for bin in bincontigs.keys():
