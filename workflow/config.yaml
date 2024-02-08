@@ -1,5 +1,3 @@
-threads: 16
-
 ###############################################
 #             Project or run name             #
 ###############################################
@@ -7,7 +5,7 @@ threads: 16
 # for. All output will be placed in a         #
 # directory with this value.                  #
 ###############################################
-PROJECT: "Base"
+PROJECT: "/export/lv6/user/mblokland/Testrun1/"
 
 ###############################################
 #                   Samples                   #
@@ -19,7 +17,7 @@ PROJECT: "Base"
 #                                             #
 # -dir:       The system path to the directory#
 #             containing the sequencing reads.#
-# -ids:       A list containing the ids of the#
+# -ids:       A list containing the sample ids of the#
 #             reads you wish to use, that are #
 #             present in the "dir" directory. #
 #                                             #
@@ -28,8 +26,8 @@ PROJECT: "Base"
 # used for more efficient contig binning.     #
 ###############################################
 READS: 
-  ids: ["sample1", "sample2"]
-  dir: "reads/"
+  ids: ["SRR17380113","SRR17380114", "SRR17380115", "SRR17380116", "SRR17380117", "SRR17380118", "SRR17380119", "SRR17380120", "SRR17380121", "SRR17380122"]
+  dir: "/export/lv6/user/mblokland/workflow/reads/"
 
 ###############################################
 #                   Assembly                  #
@@ -42,6 +40,26 @@ READS:
 assembly:
   kmer_list: ["auto"]
   memory: 250
+  threads: 16
+
+###############################################
+#                   Mapping                   #
+###############################################
+# Mapping is done with bbmap.                 #
+# -replicates:    True is the samples are     #
+#                 replicates. This will make  #
+#                 it so that all provided     #
+#                 samples will be mapped      #
+#                 against each other. False if#
+#                 the samples are not         #
+#                 replicates, then the reads  #
+#                 will only be mapped to their#
+#                 respective contigs.         #
+###############################################
+mapping:
+  replicates: True
+  threads: 16
+
 
 
 ###############################################
@@ -53,10 +71,24 @@ assembly:
 #                 must end with a /           #
 # min_contiglen:  The minimal size of a contig#
 #                 To be included in binning.  #
-# kmer_comp_klen: The kmer size used to       #
+# kmer_len:       The kmer size used to       #
 #                 generate kmer-composition   #
+# cutoff_comp:    The cutoff for bin          #
+#                 completion for filtering.   #
+#                 Bins with completion under  #
+#                 This number get filtered    #
+#                 out. 20 = 20%               #
+# cutoff_cont:    The cutoff for bin          #
+#                 contamination for filtering.#
+#                 Bins with contamination     #
+#                 qual or above this number   #
+#                 get filtered out. 15 = 15%  #
 ###############################################
 binning:
   min_contiglen: 1000
-  kmer_comp_klen: 4
+  kmer_len: 4
   metabinner_env: "~/.conda/envs/MetaBinner/"
+  threads: 16
+  cutoff_comp: 20
+  cutoff_cont: 15
+  

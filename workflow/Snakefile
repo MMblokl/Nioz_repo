@@ -229,7 +229,34 @@ rule binning:
     "-d {wildcards.project}/metabinner/{wildcards.SAMPLE}/coverage_profile.tsv "
     "-k {wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered_kmer_{kmer_len}_f{min_contiglen}.csv "
     "-p {metabinner_path}/bin -t {binning_threads}"
-    
+
+
+#This rule runs the checkM evaluation. For some reason, they decided to put the
+#final bins in a very long directory chain, so while it looks weird, it's the correct
+#bin directory.
+rule checkm_eval:
+  input:
+    "{project}/metabinner/{SAMPLE}/metabinner_res/result.log"
+  output:
+    "{project}/checkm/{SAMPLE}/storage/bin_stats_ext.tsv"
+  shell:
+    "checkm lineage_wf -t 16 -x fna {wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ {wildcards.project}/checkm/{wildcards.SAMPLE}/"
+
+
+#Filter the bins based on the checkM evaluation. The cutoff can be changed in the config.
+rule filter_bins:
+  input:
+    "{project}/checkm/{SAMPLE}/storage/bin_stats_ext.tsv"
+  output:
+    "{project}/filtered_bins/{SAMPLE}/bin_stats.tsv"
+  shell:
+    "python3 scripts/filter_bins.py 
+    "{wildcards.project}/checkm/{wildcards.SAMPLE}/storage/bin_stats_ext.tsv " + config["binning"]["cutoff_comp"] + config["binning"]["cutoff_cont"] + "{wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/" + "{wildcards.project}/filtered_bins/{wildcards.SAMPLE}/"
+
+
+
+
+
 
 
 
