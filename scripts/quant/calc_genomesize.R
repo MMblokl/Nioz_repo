@@ -41,4 +41,4 @@ for (x in files){
 }
 names(estimates) = files #Add the bin file name to each estimate
 
-write.table(estimates, file = args[2], col.names=TRU)
+write.table(estimates, file = args[2], col.names=FALSE)
