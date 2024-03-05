@@ -91,4 +91,26 @@ binning:
   threads: 16
   cutoff_comp: 20
   cutoff_cont: 15
-  
+
+
+###############################################
+#                Quantification               #
+###############################################
+# Quantification is done with Bin Annotation  #
+# Tool. Config for that tool is here          #
+# cat_database:   The full filepath to the CAT#
+#                 database.                   #
+# cat_taxonomy:   The full path to the CAT    #
+#                 database taxonomy file.     #
+# threads:        The threads to use for the  #
+#                 classification.             #
+###############################################
+quantification:
+  cat_database: "./CAT_database/CAT_database"
+  cat_taxonomy: "./CAT_database/CAT_taxonomy"
+  threads: 16
+
+
+
+
+

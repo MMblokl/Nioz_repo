@@ -39,6 +39,11 @@ with open(checkm_file, "r") as f, open(f"{filt_bin_dir}/bin_stats.tsv", "w") as 
   o.write("Bin amount\tBin amount after filtering\tAvarage completeness\tAvarage contamination\n")
   o.write(f"{prefilt_binamt}\t{unfilt_binamt}\t{total_comp/unfilt_binamt}\t{total_cont/unfilt_binamt}")
 
+
+
+
+#Old code \/
+
 #for f in files:
 #  dirs = f.split("/")
 #  #os.system(f"mkdir -p filtered_bins/{dirs[1]}/{dirs[2]}")

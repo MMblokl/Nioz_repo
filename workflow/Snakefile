@@ -254,6 +254,28 @@ rule filter_bins:
     "{wildcards.project}/checkm/{wildcards.SAMPLE}/storage/bin_stats_ext.tsv " + config["binning"]["cutoff_comp"] + config["binning"]["cutoff_cont"] + "{wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/" + "{wildcards.project}/filtered_bins/{wildcards.SAMPLE}/"
 
 
+rule bat_classify:
+  input:
+    "{project}/filtered_bins/{SAMPLE}/bin_stats.tsv"
+  output:
+    "{project}/classification/{SAMPLE}/out.BAT.log"
+  shell:
+    "CAT bins -b {wildcards.project}/filtered_bins/{wildcards.SAMPLE} " + config["classification"]["cat_database"] +" -t " + config["classification"]["cat_taxonomy"] + " -n " + config["classification"]["threads"] + " -o {wilcards.project}/classification/{wildcards.SAMPLE} -s .fna"
+
+
+rule bat_names:
+  input:
+    "{project}/classification/{SAMPLE}/out.BAT.log"
+  output:
+    "{project}/classification/{SAMPLE}/bat_classification.txt"
+  shell:
+    "CAT add_names -i {wildcards.project}/classification/{wildcards.SAMPLE}/out.BAT.bin2classification.txt -o {wildcards.project}/classification/{wildcards.SAMPLE}/bat_classification.txt -t " + config["classification"]["cat_taxonomy"] + " --only_official --exclude_scores"
+
+
+
+
+
+
 
 
 
