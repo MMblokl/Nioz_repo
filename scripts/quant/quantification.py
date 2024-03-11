@@ -21,8 +21,10 @@ for dir in glob.glob("./*/"):
     while line != "":
       line = line.split(" ")
       contigname = line[-1].strip()
-      contiglen = int(contigname.split("_")[3])
-      contigdata[contigname] = {'Length': contiglen, 'Mappedreads': int(line[-2])}
+      sub = contigname.split("_")
+      contiglen = int(sub[3])
+      contigcov = float(sub[-1])
+      contigdata[contigname] = {'Length': contiglen, 'Mappedreads': int(line[-2]), 'Coverage': contigcov}
       line = f.readline()
 
   
@@ -36,6 +38,17 @@ for dir in glob.glob("./*/"):
       contig = t[0].strip('"')
       contigdata[contig]["Depth"] = float(depth)
       line = f.readline()
+
+
+  #This reads the tpm of each contig from the salmon output
+  with open(f"{id}/salmon_quant/readbased_quant/quant.sf", "r") as f:
+    f.readline()
+    line = f.readline()
+    while line != '':
+      t = line.split("\t")
+      contig = t[0]
+      tpm = t[3]
+      contigdata[contig]["tpm"] = float(tpm)
 
 
   #Put all the contigs in all bins into a temporary file that shows what bin a contig belongs to.
@@ -81,34 +94,91 @@ for dir in glob.glob("./*/"):
   bin_quantdata = {}
   os.system(f"mkdir -p {id}/quantification_runs/")
   with open(f"{id}/quantification_runs/quant_table.tsv", "w") as o:
-    o.write("bin\tTotal reads in bin/Total reads in sample\tTotal depth in bin/Total depth in sample\tAdjusted reads/Total adjusted reads(median)\tAdjusted reads/Total adjusted reads(average)\n")
+    o.write("bin\tTotal reads in bin/Total reads in sample\tWeighted average bin coverage/total bin coverage\tBin depth/total bin depth(avg)\tBin depth/Total bin depth(median)\tAdjusted reads/total adjusted reads(depth)(avg)\tAdjusted reads/total adjusted reads(depth)(med)\tAdjusted reads/Total adjusted reads(median)\tAdjusted reads/Total adjusted reads(average)\tTPM percentage(avg)\tTPM percentage(median)\tTPM percentage(weighted avg)\n")
     total_reads = 0 #The total reads in the sample
-    total_depth = 0
     
     gs_adjusted_total_med = 0 #The total amount of adjusted reads based on the ratio of reads mapped to each contig basepair.
     gs_adjusted_total_avg = 0 #The total reads adjusted avg.
     
+    bd_avg_total = 0 #The sum of the averages of the contig depths in all bins.
+    bd_med_total = 0 #The sum of the medians of the contig depths in all bins.
+    
+    bd_adj_total_avg = 0 #The sum of total adjusted reads based on the average depth of all contigs in bin.
+    bd_adj_total_med = 0 #sum of adjusted reads based on depth median.
+    
+    total_coverage = 0 #The total coverage of all bins/MAGs
+    
+    tpm_avg_total = 0 #the total sum of all bin averages
+    tpm_med_total = 0 #the total sum of all bin medians
+    tpm_weight_avg_total = 0
+    
     for bin in bindata.keys():
       binreads = 0 #The amount of mapped reads in the bin
-      bindepth = 0 #The total contig depth in the bin\
-      dat = bindata[bin]
+      dat = bindata[bin] #A dict containing the data of all contigs in a bin
       rpbp_contiglist = []
+      depth_pb = []
       
+      bin_cov_contiglist = [] #A list containing all coverages of all contigs in the bin
+      
+      bin_contig_lengths = [] #A list to contain the lengths of each contig to use as weights
+      
+      tpm_contig_list = [] #A list filled with all tpm values of all contigs in the bin
+      
+      #Loop through all contigs in bin to sum and collect values per bin
       for contig in dat.keys():
-        binreads += dat[contig]["Mappedreads"]
-        bindepth += dat[contig]["Depth"]
-        contig_rpbp = dat[contig]["Mappedreads"]/dat[contig]["Length"] #The ratio of number of reads per basepair in the contig
+        contigdata = dat[contig] #The data of the current contig
+        binreads += contigdata["Mappedreads"]
+        depth_pb.append(contigdata["Depth"]) #Append the contig depth to a list
+        
+        bin_cov_contiglist.append(contigdata["Coverage"])
+        bin_cov_weights.append(contigdata["Length"])
+        
+        #Rpbp: total mapped Reads Per contig Base Pair ratio
+        contig_rpbp = contigdata["Mappedreads"]/contigdata["Length"] #The ratio of number of reads per basepair in the contig
         rpbp_contiglist.append(contig_rpbp) #The reads per contig basepair is put into a list, either the median or the average is used
+        
+        tpm_contig_list.append(contigdata["tpm"])
         
       
       #Calculations for read amount per basepair ratios
       contig_rpbp_avg = numpy.average(rpbp_contiglist) #The average of contig reads per basepair ratios
       contig_rpbp_med = numpy.median(rpbp_contiglist) #The median of contig reads per basepair ratios
       
+      #Depth calculations
+      contigdepth_avg = numpy.average(depth_pb)
+      bd_avg_total += contigdepth_avg
+      contigdepth_med = numpy.median(depth_pb)
+      bd_med_total += contigdepth_med
+      
+      #Depth adjusted reads
+      dep_adj_readamt_avg = binreads*contigdepth_avg
+      bd_adj_total_avg += dep_adj_readamt_avg
+      dep_adj_readamt_med = binreads*contigdepth_med
+      bd_adj_total_med += dep_adj_readamt_med
+      
+      #Coverage calculations
+      bin_coverage = numpy.average(bin_cov_contiglist, weights=bin_contig_lengths) #The coverage of a bin calculated as the average of all contig coverages weighted by the contig length
+      total_coverage += bin_coverage
+      
+      #tpm calculations
+      tpm_med = numpy.median(tpm_contig_list)
+      tpm_med_total += tpm_med
+      tpm_avg = numpy.average(tpm_contig_list)
+      tpm_avg_total += tpm_avg
+      tpm_avg_weighted = numpy.average(tpm_contig_list, bin_contig_lengths)
+      tpm_weight_avg_total += tpm_avg_weighted
       
       
+      #Collecting each value calculated in a dict to match it to the correct bin
       bin_quantdata[bin] = {"bin_reads": binreads, \
-      "bin_depth": bindepth, \
+      "bin_depth_avg": contigdepth_avg, \
+      "bin_depth_med": contigdepth_med, \
+      "adj_reads_dep_avg": dep_adj_readamt_avg, \
+      "adj_reads_dep_med": dep_adj_readamt_med, \
+      "tpm_med": tpm_med, \
+      "tpm_avg": tpm_avg, \
+      "tpm_weighted": tpm_avg_weighted, \
+      "bin_coverage": bin_coverage, \
       "genomesize": genomesizes[bin], \
       "rpbp_ratio_avg": contig_rpbp_avg, \
       "rpbp_ratio_med": contig_rpbp_med}
@@ -126,7 +196,6 @@ for dir in glob.glob("./*/"):
       bin_quantdata[bin]["adjusted_read_amt_avg"] = adjusted_reads_avg
       
       total_reads += binreads
-      total_depth += bindepth
 
       #Instead of just counting up the toal rpbp ratio, you use that ratio in comparison to the total reads in a bin
       # to see how much weight each contig should have. In this way, you could be able to estimate percentages of the contigs
@@ -134,19 +203,38 @@ for dir in glob.glob("./*/"):
       
     #Final calculation of full percentages of each bin.
     for bin in bin_quantdata.keys():
-      #The bin_readratio, which is the amount of reads mapped divided by the total, as basic as it can get.
-      bin_readratio = (bin_quantdata[bin]['bin_reads']/total_reads)*100
+      bindata = bin_quantdata[bin]
       
+      #The bin_readratio, which is the amount of reads mapped divided by the total, as basic as it can get.
+      bin_readratio = (bindata['bin_reads']/total_reads)*100
       
       #The bin_depthratio, which is basically the same but it uses the bin depth, which is basically read coverage.
-      bin_depthratio = (bin_quantdata[bin]["bin_depth"]/total_depth)*100
+      bin_depthratio_avg = (bindata["bin_depth_avg"]/bd_avg_total)*100
+      bin_depthratio_med = (bindata["bin_depth_med"]/bd_med_total)*100
+      
+      #Adjusted readratios based on depths.
+      depth_adjusted_readratio_avg = (bindata["adj_reads_dep_avg"]/bd_adj_total_avg)*100
+      depth_adjusted_readratio_med = (bindata["adj_reads_dep_med"]/bd_adj_total_med)*100
       
       #Adjusted readratios, which is the percentage caculated with the adjusted read value instead.
-      adjusted_readratio_med = (bin_quantdata[bin]["adjusted_read_amt_med"]/gs_adjusted_total_med)*100
-      adjusted_readratio_avg = (bin_quantdata[bin]["adjusted_read_amt_avg"]/gs_adjusted_total_avg)*100
+      adjusted_readratio_med = (bindata["adjusted_read_amt_med"]/gs_adjusted_total_med)*100
+      adjusted_readratio_avg = (bindata["adjusted_read_amt_avg"]/gs_adjusted_total_avg)*100
       
-      #Read coverage depth use
+      #Bin coverage divided by the sum of all bin coverages in the sample.
+      coverage_percentage = (bindata["bin_coverage"]/total_coverage)*100
       
-      o.write(f"{bin}\t{bin_readratio}\t{bin_depthratio}\t{adjusted_readratio_med}\t{adjusted_readratio_avg}\n")
+      #Tpm calculations
+      tpm_med_percentage = (bindata["tpm_med"]/tpm_med_total)*100
+      tpm_avg_percentage = (bindata["tpm_avg"]/tpm_avg_total)*100
+      tpm_weighted_percentage = (bindata["tpm_weighted"]/tpm_weight_avg_total)*100
+      
+      o.write(f"{bin}\t{bin_readratio}\t{coverage_percentage}\t{bin_depthratio_avg}\t{bin_depthratio_med}\t{depth_adjusted_readratio_avg}\t{depth_adjusted_readratio_med}\t{adjusted_readratio_med}\t{adjusted_readratio_avg}\t{tpm_avg_percentage}\t{tpm_med_percentage}\t{tpm_weighted_percentage}\n")
     
-    
+
+
+
+
+#the coverage for each MAG was calculated as the average of all contig coverages, weighted by their length. The relative abundance of MAGs in each metagenomic dataset was calculated as its coverage divided by the total coverage of all genomes 
+
+
+
