@@ -197,6 +197,7 @@ rule gen_coverage:
     | awk '{{if ($2>'"1000"') print $0 }}' | \
     cut -f -1,4- > {wildcards.project}/metabinner/{wildcards.SAMPLE}/coverage_profile.tsv"""
 
+
 #At time of writing, the script to generate the kmer_profile has a pretty annoying error
 # that makes it so that you have to have the input file in the current working directy,
 # together with the script. This is because in the script tries to look for the
@@ -254,22 +255,24 @@ rule filter_bins:
     "{wildcards.project}/checkm/{wildcards.SAMPLE}/storage/bin_stats_ext.tsv " + config["binning"]["cutoff_comp"] + config["binning"]["cutoff_cont"] + "{wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/" + "{wildcards.project}/filtered_bins/{wildcards.SAMPLE}/"
 
 
-rule bat_classify:
+#Runs the classification with gtdbtk
+rule gtdbtk:
   input:
     "{project}/filtered_bins/{SAMPLE}/bin_stats.tsv"
   output:
-    "{project}/classification/{SAMPLE}/out.BAT.log"
+    "{project}/gtdbtk/{SAMPLE}/gtdbtk.log"
   shell:
-    "CAT bins -b {wildcards.project}/filtered_bins/{wildcards.SAMPLE} " + config["classification"]["cat_database"] +" -t " + config["classification"]["cat_taxonomy"] + " -n " + config["classification"]["threads"] + " -o {wilcards.project}/classification/{wildcards.SAMPLE} -s .fna"
+    "gtdbtk classify_wf --genome_dir {wildcards.project}/filtered_bins/{wildcards.SAMPLE} --out_dir {wildcards.project}/gtdbtk/{wildcards.SAMPLE} -x fna --cpus 16"
 
 
-rule bat_names:
+#Runs a script to collect the classifications into one file, which is more readable.
+rule get_classification:
   input:
-    "{project}/classification/{SAMPLE}/out.BAT.log"
+    "{project}/gtdbtk/{SAMPLE}/gtdbtk.log"
   output:
-    "{project}/classification/{SAMPLE}/bat_classification.txt"
+    "{project}/gtdbtk/{SAMPLE}/classification.tsv"
   shell:
-    "CAT add_names -i {wildcards.project}/classification/{wildcards.SAMPLE}/out.BAT.bin2classification.txt -o {wildcards.project}/classification/{wildcards.SAMPLE}/bat_classification.txt -t " + config["classification"]["cat_taxonomy"] + " --only_official --exclude_scores"
+    "python3 get_classifications.py {wildcards.project}/gtdbtk/{wildcards.SAMPLE}/classification.tsv {wildcards.project}/gtdbtk/{wildcards.SAMPLE}"
 
 
 
