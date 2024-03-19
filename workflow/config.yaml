@@ -60,8 +60,6 @@ mapping:
   replicates: True
   threads: 16
 
-
-
 ###############################################
 #                   Binning                   #
 ###############################################
@@ -69,6 +67,12 @@ mapping:
 # metabinner_env: The full filepath of the    #
 #                 location of metabinner,     #
 #                 must end with a /           #
+#                 Can be found by using the   #
+#                 command:                    #
+#                 which run_metabinner.sh     #
+#                 Make sure you link to the   #
+#                 "MetaBinner" directory and  #
+#                 not the actual run script.  #
 # min_contiglen:  The minimal size of a contig#
 #                 To be included in binning.  #
 # kmer_len:       The kmer size used to       #
@@ -87,23 +91,27 @@ mapping:
 binning:
   min_contiglen: 1000
   kmer_len: 4
-  metabinner_env: "~/.conda/envs/MetaBinner/"
+  metabinner_env: "/export/lv5/software/MetaBinner/"
   threads: 16
   cutoff_comp: 20
   cutoff_cont: 15
 
+###############################################
+#                Classification               #
+###############################################
+# Classification is done with GTDB-TK.        #
+
+# cpus:           The amount of cpus to be    #
+#                 used by gtdbtk.             #
+###############################################
+classification:
+  cpus: 16
 
 ###############################################
-#                Quantification               #
+#               Quantification                #
 ###############################################
-# Quantification is done with GTDB-TK. Config 
-
-# threads:        The threads to use for the  #
-#                 classification.             #
+# among us:       The hit game among us.      #
 ###############################################
-quantification:
-  threads: 16
-
 
 
 

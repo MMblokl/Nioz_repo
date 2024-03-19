@@ -49,6 +49,7 @@ for dir in glob.glob("./*/"):
       contig = t[0]
       tpm = t[3]
       contigdata[contig]["tpm"] = float(tpm)
+      line = f.readline()
 
 
   #Put all the contigs in all bins into a temporary file that shows what bin a contig belongs to.
@@ -94,11 +95,14 @@ for dir in glob.glob("./*/"):
   bin_quantdata = {}
   os.system(f"mkdir -p {id}/quantification_runs/")
   with open(f"{id}/quantification_runs/quant_table.tsv", "w") as o:
-    o.write("bin\tTotal reads in bin/Total reads in sample\tWeighted average bin coverage/total bin coverage\tBin depth/total bin depth(avg)\tBin depth/Total bin depth(median)\tAdjusted reads/total adjusted reads(depth)(avg)\tAdjusted reads/total adjusted reads(depth)(med)\tAdjusted reads/Total adjusted reads(median)\tAdjusted reads/Total adjusted reads(average)\tTPM percentage(avg)\tTPM percentage(median)\tTPM percentage(weighted avg)\n")
+    o.write("bin\tTotal reads in bin/Total reads in sample\tWeighted average bin coverage/total bin coverage\tBin depth/total bin depth(avg)\tBin depth/Total bin depth(median)\tAdjusted reads/total adjusted reads(depth)(avg)\tAdjusted reads/total adjusted reads(depth)(med)\tAdjusted reads/Total adjusted reads(median)\tAdjusted reads/Total adjusted reads(average)\tAdjusted reads/Total adjusted reads(median)(inverse)\tAdjusted reads/Total adjusted reads(average)(inverse)\tTPM percentage(avg)\tTPM percentage(median)\tTPM percentage(weighted avg)\n")
     total_reads = 0 #The total reads in the sample
     
     gs_adjusted_total_med = 0 #The total amount of adjusted reads based on the ratio of reads mapped to each contig basepair.
     gs_adjusted_total_avg = 0 #The total reads adjusted avg.
+    
+    gs_i_adjusted_total_med = 0 #The same as the other reads adjusted by genomesize, although here we use the inverse of the genomesize, so division.
+    gs_i_adjusted_total_avg = 0
     
     bd_avg_total = 0 #The sum of the averages of the contig depths in all bins.
     bd_med_total = 0 #The sum of the medians of the contig depths in all bins.
@@ -131,10 +135,10 @@ for dir in glob.glob("./*/"):
         depth_pb.append(contigdata["Depth"]) #Append the contig depth to a list
         
         bin_cov_contiglist.append(contigdata["Coverage"])
-        bin_cov_weights.append(contigdata["Length"])
+        bin_contig_lengths.append(contigdata["Length"])
         
         #Rpbp: total mapped Reads Per contig Base Pair ratio
-        contig_rpbp = contigdata["Mappedreads"]/contigdata["Length"] #The ratio of number of reads per basepair in the contig
+        contig_rpbp = contigdata["Mappedreads"]/contigdata["Length"] #The ratio of number of reads per basepair in the contig, can be seen as the number of reads mapped to the contig adjusted by the contiglength
         rpbp_contiglist.append(contig_rpbp) #The reads per contig basepair is put into a list, either the median or the average is used
         
         tpm_contig_list.append(contigdata["tpm"])
@@ -165,9 +169,25 @@ for dir in glob.glob("./*/"):
       tpm_med_total += tpm_med
       tpm_avg = numpy.average(tpm_contig_list)
       tpm_avg_total += tpm_avg
-      tpm_avg_weighted = numpy.average(tpm_contig_list, bin_contig_lengths)
+      tpm_avg_weighted = numpy.average(tpm_contig_list, weights=bin_contig_lengths)
       tpm_weight_avg_total += tpm_avg_weighted
       
+      #Adjusted reads
+      #Adjusted reads are the amount of mapped reads in the bin adjusted by the genomesize. The two versions are the median and average of the read to basepair ratio in the binned contigs.
+      #The adjusted amount of reads based on the genomesize. If the median amount of reads mapped to eacj basepair in a contig is 2, then the adjusted reads is twice the number of basepairs in the genomesize.
+      adjusted_reads_med = contig_rpbp_med*genomesizes[bin]
+      gs_adjusted_total_med += adjusted_reads_med
+      #The inverse
+      adjusted_reads_med_i = contig_rpbp_med/genomesizes[bin]
+      gs_i_adjusted_total_med += adjusted_reads_med_i
+      
+      #Avg version of adjusted reads
+      adjusted_reads_avg = contig_rpbp_avg*genomesizes[bin]
+      gs_adjusted_total_avg += adjusted_reads_avg
+      #The inverse
+      adjusted_reads_avg_i = contig_rpbp_avg/genomesizes[bin]
+      gs_i_adjusted_total_avg += adjusted_reads_avg_i
+
       
       #Collecting each value calculated in a dict to match it to the correct bin
       bin_quantdata[bin] = {"bin_reads": binreads, \
@@ -181,19 +201,13 @@ for dir in glob.glob("./*/"):
       "bin_coverage": bin_coverage, \
       "genomesize": genomesizes[bin], \
       "rpbp_ratio_avg": contig_rpbp_avg, \
-      "rpbp_ratio_med": contig_rpbp_med}
+      "rpbp_ratio_med": contig_rpbp_med, \
+      "adjusted_read_amt_med": adjusted_reads_med, \
+      "adjusted_read_amt_avg": adjusted_reads_avg, \
+      "adjusted_read_amt_med_i": adjusted_reads_med_i, \
+      "adjusted_read_amt_avg_i": adjusted_reads_avg_i}
       
-      #Adjusted reads are the amount of mapped reads in the bin adjusted by the genomesize. The two versions are the median and average of the read to basepair ratio in the binned contigs.
-      #The adjusted amount of reads based on the genomesize. If the median amount of reads mapped to eacj basepair in a contig is 2, then the adjusted reads is twice the number of basepairs in the genomesize.
-      adjusted_reads_med = contig_rpbp_med*bin_quantdata[bin]["genomesize"]
-      gs_adjusted_total_med += adjusted_reads_med
-      
-      #Avg version of adjusted reads
-      adjusted_reads_avg = contig_rpbp_avg*bin_quantdata[bin]["genomesize"]
-      gs_adjusted_total_avg += adjusted_reads_avg
-      
-      bin_quantdata[bin]["adjusted_read_amt_med"] = adjusted_reads_med
-      bin_quantdata[bin]["adjusted_read_amt_avg"] = adjusted_reads_avg
+     
       
       total_reads += binreads
 
@@ -220,6 +234,10 @@ for dir in glob.glob("./*/"):
       adjusted_readratio_med = (bindata["adjusted_read_amt_med"]/gs_adjusted_total_med)*100
       adjusted_readratio_avg = (bindata["adjusted_read_amt_avg"]/gs_adjusted_total_avg)*100
       
+      #Adjusted readratios, with inversed genomesize instead.
+      adjusted_readratio_med_i = (bindata["adjusted_read_amt_med_i"]/gs_i_adjusted_total_med)*100
+      adjusted_readratio_avg_i = (bindata["adjusted_read_amt_med_i"]/gs_i_adjusted_total_avg)*100
+      
       #Bin coverage divided by the sum of all bin coverages in the sample.
       coverage_percentage = (bindata["bin_coverage"]/total_coverage)*100
       
@@ -228,7 +246,7 @@ for dir in glob.glob("./*/"):
       tpm_avg_percentage = (bindata["tpm_avg"]/tpm_avg_total)*100
       tpm_weighted_percentage = (bindata["tpm_weighted"]/tpm_weight_avg_total)*100
       
-      o.write(f"{bin}\t{bin_readratio}\t{coverage_percentage}\t{bin_depthratio_avg}\t{bin_depthratio_med}\t{depth_adjusted_readratio_avg}\t{depth_adjusted_readratio_med}\t{adjusted_readratio_med}\t{adjusted_readratio_avg}\t{tpm_avg_percentage}\t{tpm_med_percentage}\t{tpm_weighted_percentage}\n")
+      o.write(f"{bin}\t{bin_readratio}\t{coverage_percentage}\t{bin_depthratio_avg}\t{bin_depthratio_med}\t{depth_adjusted_readratio_avg}\t{depth_adjusted_readratio_med}\t{adjusted_readratio_med}\t{adjusted_readratio_avg}\t{adjusted_readratio_med_i}\t{adjusted_readratio_avg_i}\t{tpm_avg_percentage}\t{tpm_med_percentage}\t{tpm_weighted_percentage}\n")
     
 
 

@@ -23,22 +23,27 @@ for file in classfiles:
       t = line.split("\t")
       bin = t[0]
       
-      classification = t[1].split(";") #We split the classifications by their seperator.
-      classification = [x[3:] for x in classification] #Here, the s__, g__, etc. headers are removed as these are useless to us
       
-      #We need to remove the _A/_B/_E parts from the species classification as this is not that usefull for us
-      species = classification[-1].split(" ")[-1].split("_")[0] #The final part of the species classification
-      genus = classification[-2].split("_")[0]
-      
-      #Here, the species classification is replaced with "NA" if it is empty, meaning there was no species specific classification by gtdbtk
-      if species == "":
-        classification[-1] = "NA"
-      else:
-        classification[-1] = " ".join([genus,species])
-      classification[-2] = genus
-      
-      classifications[bin] = classification
-      line = f.readline()
+      try:
+        classification = t[1].split(";") #We split the classifications by their seperator.
+        classification = [x[3:] for x in classification] #Here, the s__, g__, etc. headers are removed as these are useless to us
+        
+        #We need to remove the _A/_B/_E parts from the species classification as this is not that usefull for us
+        species = classification[-1].split(" ")[-1].split("_")[0] #The final part of the species classification
+        genus = classification[-2].split("_")[0]
+        
+        #Here, the species classification is replaced with "NA" if it is empty, meaning there was no species specific classification by gtdbtk
+        if species == "":
+          classification[-1] = "NA"
+        else:
+          classification[-1] = " ".join([genus,species])
+        classification[-2] = genus
+        
+        classifications[bin] = classification
+        line = f.readline()
+      except:
+        #This except is to catch any weird classifications that might arise from using gtdbtk, if this happens, some person put some strange classifcation into the gtdbtk system in an unsual format.
+        classifcations[bin] = ["NA"]*7
 
 #Writing the classifications into a more human readable and convenient format.
 with open(f"{outfile}", "w") as o:

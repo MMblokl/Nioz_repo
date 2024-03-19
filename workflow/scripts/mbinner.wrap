@@ -1,0 +1,57 @@
+#!/bin/bash
+
+#This wrapper script is meant to run metabinner, as this tool can have some
+# conflicts with certain other tools used in the workflow.
+
+
+####
+#PLEASE NOTE:
+#If this script does not work, that means the way module and environments are
+# loaded work differently from how they are loaded in the script.
+#Please replace the line where the enviroment is loaded to be the correct way
+# for your server/machine.
+#
+#Additionally, make sure you link to the MetaBinner install location correctly
+# in the config as this is important for locating some of the metabinner scripts.
+
+####
+#Arguments
+####
+#$1: Filtered fasta file
+#$2: contig size limit as integer
+#$3: kmer size for sliding window
+#$4: metabinner and kmerindex output dir
+#$5: The path to metabinner
+#$6: The amount of threads to be used
+
+
+####
+#Loading environment for the gen_kmer.py script
+#Python packages required:
+# - Numpy
+# - Pandas
+# - BioPython
+# - itertools
+####
+source $HOME/.bashrc.conda3
+conda activate bio
+
+
+####
+#Generating kmer profile
+####
+python3 ./scripts/metabinner_scripts/gen_kmer.py $1 $2 $3 $4/kmerprofile.csv
+conda deactivate
+conda deactivate
+
+####
+#Loading the environment for MetaBinner
+####
+module load MetaBinner
+
+
+####
+#Running metabinner
+####
+run_metabinner.sh -a $1 -o $4 -d $4/coverage_profile.tsv -k $4/kmerprofile.csv -p $5 -t $6
+

@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#This script runs gtdbtk in a seperate enviroment to prevent module conflicts.
+
+####
+#Arguments
+####
+#$1: Bin dir
+#$2: Output directory
+#$3: Usable cpus
+
+####
+#Load the environment
+####
+#Replace these lines to what you would use to load in your gtdbtk environment
+
+source $HOME/.bashrc.conda3
+conda activate gtdbtk
+
+
+####
+#Running gtdbtk
+####
+
+gtdbtk classify_wf --genome_dir $1 --out_dir $2 -x fna --cpus $3
