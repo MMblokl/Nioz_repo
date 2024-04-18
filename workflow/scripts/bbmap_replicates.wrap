@@ -1,0 +1,3 @@
+#!/bin/bash
+
+#This script runs bbmap mapping, this way we are able to run bbmap multiple times using snakemake

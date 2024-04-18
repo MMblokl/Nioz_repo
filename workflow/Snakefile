@@ -1,8 +1,9 @@
 """
 Metagenomics workflow for estimating abundance from metagenomic shotgun reads.
-All provided samples are assumed to be replicates of each other.
+All provided samples are assumed to be replicates of each other unless specified.
+Please read the README before using to make sure all tools can be found properly.
 Company: NIOZ
-Internship project for Hogeschool Leiden
+Part of an internship project for the Hogeschool Leiden
 Author: Mats Blokland
 """
 
@@ -30,6 +31,8 @@ rule structure:
   shell:
     "scripts/init_sample.sh {wildcards.project} {wildcards.SAMPLE} {input.fw} {input.rv}"
 
+
+assembly_threads = config["assembly"]["threads"]
 #
 ############
 # Assembly #
@@ -41,13 +44,15 @@ rule assemble:
     fw = "{project}/samples/{SAMPLE}/rawdata/fw.fastq",
     rv = "{project}/samples/{SAMPLE}/rawdata/rv.fastq"
   output:
-    contigs = "{project}/metaspades/{SAMPLE}/contigs.fasta"
+    "{project}/metaspades/{SAMPLE}/contigs.fasta"
   shell:
     "metaspades.py -1 {input.fw} -2 {input.rv} "
     "-o {wildcards.project}/metaspades/{wildcards.SAMPLE}/ "
-    "-t " + config["assembly"]["threads"]
+    "-t {assembly_threads}" 
 
 
+min_contiglen = config["binning"]["min_contiglen"]
+mapping_threads = config["mapping"]["threads"]
 ###########
 # Mapping #
 ###########
@@ -65,12 +70,24 @@ rule assemble:
 #Remove all contigs smaller than the provided min_contiglen
 rule filter_contigs:
   input:
-    "{project}/metaspades/{SAMPLE}/contigs.fasta"
+    contigs = "{project}/metaspades/{SAMPLE}/contigs.fasta"
   output:
-    "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
+    filt_contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
   shell:
-    "seqtk seq -L " + config["binning"]["min_contiglen"] +" {input.contigs} > {wildcards.PROJECT}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta"
+    "seqtk seq -L {min_contiglen} {input.contigs} > {output.filt_contigs}"
 
+
+#Create the reference so that snakemake does not attempt to align to an index that is not yet completed.
+rule mapping_reference:
+  input:
+    contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
+  output:
+    reference = "{project}/bbmap/{SAMPLE}/ref/genome/1/summary.txt"
+  shell:
+    "bbmap.sh ref={input.contigs} "
+    "path={wildcards.project}/bbmap/{wildcards.SAMPLE}/ "
+    "-threads={mapping_threads}"
+    
 
 #Map the reads back to the contigs
 if config["mapping"]["replicates"]:
@@ -78,44 +95,55 @@ if config["mapping"]["replicates"]:
   rule mapping:
     input:
       expand("{project}/samples/{sample2}/rawdata/fw.fastq", project=project, sample2=config["READS"]["ids"]),
-      fw = "{project}/samples/{SAMPLE}/rawdata/fw.fastq",
-      rv = "{project}/samples/{SAMPLE}/rawdata/rv.fastq",
-      contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
+      fw = "{project}/samples/{sample2}/rawdata/fw.fastq",
+      rv = "{project}/samples/{sample2}/rawdata/rv.fastq",
+      contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
+      reference = "{project}/bbmap/{SAMPLE}/ref/genome/1/summary.txt"
     output:
-      "{project}/bbmap/{SAMPLE}/{sample2}.sam"
+      samfile = "{project}/bbmap/{SAMPLE}/{sample2}.sam"
     shell:
-      "bbmap.sh ref={wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta "
+      "bbmap.sh ref={input.contigs} "
+      "path={wildcards.project}/bbmap/{wildcards.SAMPLE} " #This line is to make sure that the index isn't created more than once
       "in={input.fw} in2={input.rv} "
-      "-out={wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}.sam "
-      "-threads=" + config["mapping"]["threads"]
+      "-out={output.samfile} "
+      "-threads={mapping_threads}"
 
   rule bam_convert:
     input:
-      "{project}/bbmap/{SAMPLE}/{sample2}.sam"
+      samfile = "{project}/bbmap/{SAMPLE}/{sample2}.sam"
     output:
-      "{project}/bbmap/{SAMPLE}/{sample2}.bam"
+      bamfile = "{project}/bbmap/{SAMPLE}/{sample2}.BAM"
     shell:
-      "samtools view -b {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}.sam "
-      "-o {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}.bam"
+      "samtools view -b {input.samfile} "
+      "-o {output.bamfile}"
   
   rule bam_sort:
     input:
-      "{project}/bbmap/{SAMPLE}/{sample2}.bam"
+      bamfile = "{project}/bbmap/{SAMPLE}/{sample2}.BAM"
     output:
-      "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam"
+      sortedfile = "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam"
     shell:
-      "samtools sort {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}.bam "
-      "-o {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}_sorted.bam"
+      "samtools sort {input.bamfile} "
+      "-o {output.sortedfile}"
   
   rule bam_index:
     input:
-      "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam"
+      sortedfile = "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam"
     output:
-      "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam.bai"
+      indexfile = "{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam.bai"
     shell:
-      "samtools index -b -@ " + config["mapping"]["threads"] +
-      " {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}_sorted.bam "
-      "{wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.sample2}_sorted.bam.bai"
+      "samtools index -b -@ {mapping_threads} "
+      "{input.sortedfile} "
+      "{output.indexfile}"
+  
+  #This rule here makes sure that all the replicates are mapped against each other.
+  rule request_mapping:
+    input:
+      expand("{project}/bbmap/{SAMPLE}/{sample2}_sorted.bam.bai", project=project, SAMPLE=config["READS"]["ids"], sample2=config["READS"]["ids"])
+    output:
+      "{project}/bbmap/{SAMPLE}/mapping_flag.txt"
+    shell:
+      "touch {wildcards.project}/bbmap/{wildcards.SAMPLE}/mapping_flag.txt"
 
 else:
   
@@ -123,14 +151,16 @@ else:
     input:
       fw = "{project}/samples/{SAMPLE}/rawdata/fw.fastq",
       rv = "{project}/samples/{SAMPLE}/rawdata/rv.fastq",
-      contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
+      contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
+      reference = "{project}/bbmap/{SAMPLE}/ref/genome/1/summary.txt"
     output:
       "{project}/bbmap/{SAMPLE}/{SAMPLE}.sam"
     shell:
-      "bbmap.sh ref={wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta "
+      "bbmap.sh ref={input.contigs} "
+      "path={wildcards.project}/bbmap/{wildcards.SAMPLE}"
       "in={input.fw} in2={input.rv} "
       "-out={wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.sam "
-      "-threads=" + config["mapping"]["threads"]
+      "-threads={mapping_threads}"
   
   rule bam_convert:
     input:
@@ -159,20 +189,31 @@ else:
       "samtools index -b -@ " + config["mapping"]["threads"] +
       " {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}_sorted.bam "
       "{wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}_sorted.bam.bai"
+  
+  #Same rule for the replicates to make sure both options can equally be used.
+  rule request_mapping:
+    input:
+      rules.bam_index.output
+    output:
+      "{project}/bbmap/{SAMPLE}/mapping_flag.txt"
+    shell:
+      "touch {wildcards.project}/bbmap/{wildcards.SAMPLE}/mapping_flag.txt"
 
-
-
+binning_kmerlen = config["binning"]["kmer_len"]
+binning_threads = config["binning"]["threads"]
+metabinner_env = config["binning"]["metabinner_env"]
+comp_cutoff = config["binning"]["cutoff_comp"]
+cont_cutoff = config["binning"]["cutoff_cont"]
 #
 ###########
 # Binning #
 ###########
 # Hello
 
-
 #Generates the contig depth file from all alignments in the bbmap dir.
 rule gen_depth:
   input:
-    rules.bam_index.output
+    "{project}/bbmap/{SAMPLE}/mapping_flag.txt"
   output:
     "{project}/metabinner/{SAMPLE}/mb2_master_depth.txt"
   shell:
@@ -196,11 +237,15 @@ rule gen_coverage:
 rule metabinner:
   input:
     "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
-    "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam.bai"
+    "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam.bai",
+    "{project}/metabinner/{SAMPLE}/coverage_profile.tsv"
   output:
     "{project}/metabinner/{SAMPLE}/metabinner_res/result.log"
   shell:
-    "bash ./scripts/mbinner.wrap {wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta " + config["binning"]["min_contiglen"] + " " + config["binning"]["kmer_len"] + " {wildcards.project}/metabinner/{wildcards.SAMPLE} " + config["binning"]["metabinner_env"] + " " + config["binning"]["threads"]
+    "bash ./scripts/mbinner.wrap "
+    "{wildcards.project}/bbmap/{wildcards.SAMPLE}/contigs_filtered.fasta {min_contiglen} "
+    "{binning_kmerlen} {wildcards.project}/metabinner/{wildcards.SAMPLE} "
+    "{metabinner_env} {binning_threads}"
 
 
 #This rule runs the checkM evaluation. For some reason, they decided to put the
@@ -210,22 +255,27 @@ rule checkm_eval:
   input:
     "{project}/metabinner/{SAMPLE}/metabinner_res/result.log"
   output:
-    "{project}/checkm/{SAMPLE}/storage/bin_stats_ext.tsv"
+    "{project}/checkm/{SAMPLE}/lineage.ms"
   shell:
-    "checkm lineage_wf -t " + config["binning"]["threads"] + " -x fna {wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ {wildcards.project}/checkm/{wildcards.SAMPLE}/"
+    "checkm lineage_wf -t {binning_threads} -x fna "
+    "{wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ "
+    "{wildcards.project}/checkm/{wildcards.SAMPLE}/"
 
 
 #Filter the bins based on the checkM evaluation. The cutoff can be changed in the config.
 rule filter_bins:
   input:
-    "{project}/checkm/{SAMPLE}/storage/bin_stats_ext.tsv"
+    "{project}/checkm/{SAMPLE}/lineage.ms"
   output:
     "{project}/filtered_bins/{SAMPLE}/bin_stats.tsv"
   shell:
-    "python3 scripts/filter_bins.py 
-    "{wildcards.project}/checkm/{wildcards.SAMPLE}/storage/bin_stats_ext.tsv " + config["binning"]["cutoff_comp"] + config["binning"]["cutoff_cont"] + "{wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/" + "{wildcards.project}/filtered_bins/{wildcards.SAMPLE}/"
+    "python3 scripts/filter_bins.py "
+    "{wildcards.project}/checkm/{wildcards.SAMPLE}/storage/bin_stats_ext.tsv "
+    "{comp_cutoff} {cont_cutoff} "
+    "{wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ "
+    "{wildcards.project}/filtered_bins/{wildcards.SAMPLE}/"
 
-
+class_cpus = config["classification"]["cpus"]
 #
 ################
 #Classification
@@ -239,7 +289,8 @@ rule gtdbtk:
   output:
     "{project}/gtdbtk/{SAMPLE}/gtdbtk.log"
   shell:
-    "./scripts/gtdbtk.wrap {wildcards.project}/filtered_bins/{wildcards.SAMPLE}/ {wildcards.project}/gtdbtk/{wildcards.SAMPLE}/ " + config["classification"]["cpus"]
+    "bash ./scripts/gtdbtk.wrap {wildcards.project}/filtered_bins/{wildcards.SAMPLE}/ "
+    "{wildcards.project}/gtdbtk/{wildcards.SAMPLE}/ {class_cpus}"
 
 
 #Runs a script to collect the classifications into one file, which is more readable.
@@ -249,10 +300,12 @@ rule get_classification:
   output:
     "{project}/gtdbtk/{SAMPLE}/classification.tsv"
   shell:
-    "python3 get_classifications.py {wildcards.project}/gtdbtk/{wildcards.SAMPLE}/classification.tsv {wildcards.project}/gtdbtk/{wildcards.SAMPLE}"
+    "python3 scripts/get_classifications.py "
+    "{wildcards.project}/gtdbtk/{wildcards.SAMPLE}/classification.tsv "
+    "{wildcards.project}/gtdbtk/{wildcards.SAMPLE}"
 
 
-
+###########
 
 
 

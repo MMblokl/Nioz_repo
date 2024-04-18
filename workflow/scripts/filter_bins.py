@@ -21,7 +21,8 @@ with open(checkm_file, "r") as f, open(f"{filt_bin_dir}/bin_stats.tsv", "w") as 
   total_cont = 0.0
   line = f.readline()
   while line != '':
-    bindata = ast.literal_eval(line.split("\t")[1]) #Puts the checkm data into a dict
+    t = line.split("\t")
+    bindata = ast.literal_eval(t[1]) #Puts the checkm data into a dict
     completeness = bindata["Completeness"]
     contamination = bindata["Contamination"]
     prefilt_binamt += 1
@@ -29,12 +30,12 @@ with open(checkm_file, "r") as f, open(f"{filt_bin_dir}/bin_stats.tsv", "w") as 
     # If the contamination reaches 0.0 in checkM the completeness is also 0.0.
     # This would otherwise pass the contamination filter which would mean that
     # bin does not get filtered out, which would not be good.
-    if completeness > cutoff_comp or (contamination < cutoff_cont and contamination != 0.0):
+    if completeness > float(cutoff_comp) or (contamination < float(cutoff_cont) and contamination != 0.0):
       unfilt_binamt += 1
       total_comp += completeness
       total_cont += contamination
       #The bin file is copied to a filtered bin directory so that the original bins are still there and not moved.
-      os.system(f"cp -n {bin_dir} {filt_bin_dir}")
+      os.system(f"cp -n {bin_dir}/{t[0]}.fna {filt_bin_dir}")
     line = f.readline()
   o.write("Bin amount\tBin amount after filtering\tAvarage completeness\tAvarage contamination\n")
   o.write(f"{prefilt_binamt}\t{unfilt_binamt}\t{total_comp/unfilt_binamt}\t{total_cont/unfilt_binamt}")

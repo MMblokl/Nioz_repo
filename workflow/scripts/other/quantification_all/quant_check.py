@@ -1,14 +1,15 @@
 import sys
+import numpy
+
 
 #Arguments
-quant_file = sys.argv[1]
-true_quants = sys.argv[2]
-classification_file = sys.argv[3]
+quant_file = sys.argv[1] #File with estimated quantifications
+true_quants = sys.argv[2] #File that contains true sample abundance
+classification_file = sys.argv[3] #File that contains the bin classifications
 outdir = sys.argv[4]
 
 
 
-#DIT ZIJN DE VERDOMDE BAT NAMES VERVANG HET MET ANDER DING
 classifications = {}
 #Read the classifications of genus and species level into a dict to be used for matching the true and estimated classifications
 with open(f"{classification_file}", "r") as f:
@@ -33,7 +34,7 @@ with open(f"{true_quants}", "r") as f:
     line = f.readline()
 
 
-#Read the quantifications into a dict, bins are the keys where the values are more bins with the keys the specific approach, and the values the quantification
+#Read the quantifications into a dict, bins are the keys where the values are bins with the keys, the specific approach, and the values the quantification
 quantifications = {}
 with open(f"{quant_file}", "r") as f:
   line = f.readline()
@@ -49,14 +50,19 @@ with open(f"{quant_file}", "r") as f:
       quantifications[bin].update({headers[index]: t[index]})
     line = f.readline()
 
+
+#Get the true abundance for species and genus from the classification names and
+# get the absolute difference in percentage. This absolute value is then averaged over the entire sample.
+
+enum_quants_spe = {k: [] for k in headers}
+enum_quants_gen = {k: [] for k in headers} #Just create a copy variant of the dict as you can't easily copy a dict in python.
 with open(f"{outdir}/species_acc.txt", "w") as spo, open(f"{outdir}/genus_acc.txt", "w") as geo:
-  spo.write("Bin\t")
   spo.write("\t".join(headers))
   spo.write("\n")
-  geo.write("Bin\t")
   geo.write("\t".join(headers))
   geo.write("\n")
   for bin in quantifications.keys():
+    #We do not want to have the unbinned bin quantification in the final results as this will muddy the accuracy
     if bin == "unbinned":
       continue
     classification = classifications[bin]
@@ -76,23 +82,29 @@ with open(f"{outdir}/species_acc.txt", "w") as spo, open(f"{outdir}/genus_acc.tx
       if species in name:
         matched_species[name] = matched_genus[name]
     
+    #Create a "sum" of the true quantifications of the genus and species so that we can calulate the difference
     genus_sum = sum(matched_genus.values())
     species_sum = sum(matched_species.values())
-    
-    outline_gen = [bin]
-    outline_spe = [bin]
     
     for method in bin_quantifications.keys():
       quant = float(bin_quantifications[method])
       diff_genus = quant - genus_sum
       diff_species = quant - species_sum
-      outline_gen.append(str(diff_genus))
-      outline_spe.append(str(diff_species))
+      
+      #We add the quantification difference and use the abs() function to make it absolute, as we want
+      #to use this result to see which method has the least variation
+      enum_quants_spe[method].append(abs(diff_species))
+      enum_quants_gen[method].append(abs(diff_genus))
+      
+  #We take the average of the difference for each method to create an output here
+  out_spe = [str(numpy.average(x)) for x in enum_quants_spe.values()]
+  out_gen = [str(numpy.average(x)) for x in enum_quants_gen.values()]
     
-    geo.write("\t".join(outline_gen))
-    geo.write("\n")
-    spo.write("\t".join(outline_spe))
-    spo.write("\n")
+  #We write the output
+  geo.write("\t".join(out_gen))
+  geo.write("\n")
+  spo.write("\t".join(out_spe))
+  spo.write("\n")
   
 
 

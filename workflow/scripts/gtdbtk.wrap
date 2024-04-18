@@ -14,8 +14,7 @@
 ####
 #Replace these lines to what you would use to load in your gtdbtk environment
 
-source $HOME/.bashrc.conda3
-conda activate gtdbtk
+source $HOME/.bashrc.conda3 gtdbtk
 
 
 ####

@@ -26,32 +26,18 @@
 
 
 ####
-#Loading environment for the gen_kmer.py script
-#Python packages required:
-# - Numpy
-# - Pandas
-# - BioPython
-# - itertools
-####
-source $HOME/.bashrc.conda3
-conda activate bio
-
-
-####
-#Generating kmer profile
-####
-python3 ./scripts/metabinner_scripts/gen_kmer.py $1 $2 $3 $4/kmerprofile.csv
-conda deactivate
-conda deactivate
-
-####
 #Loading the environment for MetaBinner
+#As long as metabinner can access all the python modules, it should work fine.
 ####
-module load MetaBinner
+
+source $HOME/.bashrc.conda3 metabinner_env
 
 
 ####
 #Running metabinner
 ####
-run_metabinner.sh -a $1 -o $4 -d $4/coverage_profile.tsv -k $4/kmerprofile.csv -p $5 -t $6
+
+python3 ./scripts/metabinner_scripts/gen_kmer.py $1 $2 $3 $4/kmerprofile.csv
+
+/export/lv5/software/MetaBinner/run_metabinner.sh -a $1 -o $4 -d $4/coverage_profile.tsv -k $4/kmerprofile.csv -p $5 -t $6
 

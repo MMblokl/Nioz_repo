@@ -161,7 +161,7 @@ with open(f"{salmon_quant}", "r") as f:
 
 #Put all the contigs in all bins into a temporary file that shows what bin a contig belongs to.
 os.system("rm -f temp.txt")
-os.system("""for bin in ../binning/filtered_bins/%s/metabinner/*.fna; do cat $bin | egrep ">" | awk -v bin="$bin" '{print $1,bin}' >> temp.txt; done""" % id)
+os.system("""for bin in %s/*.fna; do cat $bin | egrep ">" | awk -v bin="$bin" '{print $1,bin}' >> temp.txt; done""" % bins_dir)
 with open("temp.txt", "r") as f:
   line = f.readline()
   while line != "":
@@ -188,7 +188,7 @@ for contigid in unbinned_ids:
 #Reads the estimated genomesize from the genomesizes.tab file generated
 # by the calc_genomesize.R script.
 genomesizes = {}
-with open(f"genomesizes_file", "r") as f:
+with open(f"{genomesizes_file}", "r") as f:
   line = f.readline()
   while line != "":
     t = line.split(" ")
@@ -202,16 +202,19 @@ genomesizes["unbinned"] = unbinned_size #This is a "genomesize" generated for th
 
 #Summing up totals and calculating ratios for the quantification.
 bin_quantdata = {}
-with open(f"{outputfile", "w") as o:
-  o.write("bin")
-  o.write("\t".join( [str(x) for x in range(1,14)])
+with open(f"{outputfile}", "w") as o:
+  o.write("bin\t")
+  o.write("\t".join([str(x) for x in range(1,14)]))
   o.write("\n")
-  total_reads = 0 #The total reads in the sample
+  
   
   
   ########
   #Creating integers for the sum values used in each method.
   ###############################################################
+  #The total reads in the sample
+  total_reads = 0
+
   #Contig kmer coverage
   total_coverage = 0 #The total sum of all contig coverages in a sample, for method #2.
   
