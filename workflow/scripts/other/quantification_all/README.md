@@ -10,6 +10,11 @@ GTDB-TK are required.
 
 All files should be left in the same configuration as the workflow put them in.
 
+##NOTE
+It is required for the python package numpy to be available from the environment
+you run the script from.
+
+
 ###True abundances
 If you wish to also generate the absolute deviation data with true abundances,
 a single line in the "quant_runall.sh" script must be altered.

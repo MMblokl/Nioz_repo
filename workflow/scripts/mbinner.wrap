@@ -17,7 +17,7 @@
 ####
 #Arguments
 ####
-#$1: Filtered fasta file
+#$1: Filtered contig fasta file
 #$2: contig size limit as integer
 #$3: kmer size for sliding window
 #$4: metabinner and kmerindex output dir

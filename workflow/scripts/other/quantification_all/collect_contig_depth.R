@@ -7,7 +7,6 @@ args = commandArgs(trailingOnly = TRUE)
 
 df = read.delim(args[1], row.names=1)
 
-#We get the rowname that contains the sample id
 col = grep(args[2], colnames(df))
 name = colnames(df)[col]
 

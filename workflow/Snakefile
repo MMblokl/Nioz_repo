@@ -1,7 +1,8 @@
 """
 Metagenomics workflow for estimating abundance from metagenomic shotgun reads.
 All provided samples are assumed to be replicates of each other unless specified.
-Please read the README before using to make sure all tools can be found properly.
+Please read the README before using to make sure all tools are installed and can
+be used properly by the workflow.
 Company: NIOZ
 Part of an internship project for the Hogeschool Leiden
 Author: Mats Blokland
@@ -9,7 +10,6 @@ Author: Mats Blokland
 
 project = config["PROJECT"]
 
-#Hier moet de output van de laatste rule in de input staan met een expand.
 rule all:
   input:
     expand("{project}/gtdbtk/{SAMPLE}/classification.tsv", project=project, SAMPLE=config["READS"]["ids"])
@@ -98,7 +98,7 @@ if config["mapping"]["replicates"]:
       fw = "{project}/samples/{sample2}/rawdata/fw.fastq",
       rv = "{project}/samples/{sample2}/rawdata/rv.fastq",
       contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
-      reference = "{project}/bbmap/{SAMPLE}/ref/genome/1/summary.txt"
+      reference = "{project}/bbmap/{SAMPLE}/ref/genome/1/summary.txt" #For information, this is not actually used in running BBmap, it is just used as a flag, as this file signifies the reference is complete.
     output:
       samfile = "{project}/bbmap/{SAMPLE}/{sample2}.sam"
     shell:

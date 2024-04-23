@@ -5,7 +5,7 @@
 # for. All output will be placed in a         #
 # directory with this value.                  #
 ###############################################
-PROJECT: "/export/lv6/user/mblokland/workflow/NEWsample1"
+PROJECT: "/export/lv6/user/mblokland/workflow/dnamock"
 
 ###############################################
 #                   Samples                   #
@@ -26,8 +26,8 @@ PROJECT: "/export/lv6/user/mblokland/workflow/NEWsample1"
 # used for more efficient contig binning.     #
 ###############################################
 READS: 
-  ids: ["SRR20340716", "SRR20340717", "SRR20340718", "SRR20340824", "SRR20340825", "SRR20340826", "SRR20340870", "SRR20340871", "SRR20340872"]
-  dir: "/export/lv6/user/mblokland/atcc_msa_2002/"
+  ids: ["SRR17380124", "SRR17380125", "SRR17380126", "SRR17380127", "SRR17380128", "SRR17380129", "SRR17380208", "SRR17380210", "SRR17380214", "SRR17380219"]
+  dir: "/export/lv6/user/mblokland/mock_dna/"
 
 ###############################################
 #                   Assembly                  #
@@ -40,7 +40,7 @@ READS:
 assembly:
   kmer_list: ["auto"]
   memory: 250
-  threads: 8
+  threads: 16
 
 ###############################################
 #                   Mapping                   #
@@ -60,7 +60,7 @@ assembly:
 ###############################################
 mapping:
   replicates: True
-  threads: 8
+  threads: 16
 
 ###############################################
 #                   Binning                   #
@@ -94,7 +94,7 @@ binning:
   min_contiglen: 1000
   kmer_len: 4
   metabinner_env: "/export/lv5/software/MetaBinner/"
-  threads: 8
+  threads: 16
   cutoff_comp: 20
   cutoff_cont: 15
 
