@@ -4,13 +4,24 @@ import glob
 #This script reads the classifications by gtdbtk in the "gtdbtk_dir" dir.
 #These are then placed in a single human-readable file as the "outfile" argument.
 
-
-
-#arguments:
+###########
+#Arguments:
+###########
 outfile = sys.argv[1]
 gtdb_dir = sys.argv[2]
+##########
 
+
+#If the script is run manually, exits if there are not enough arguments.
+if len(sys.argv) < 3:
+  print("Usage: python3 get_classifications.py /output_file.csv /path/to/gtdbtk/output/dir/")
+  exit()
+
+#Gets the path to all classification summary files in the gtdb_dir directory.
 classfiles = glob.glob(f"{gtdb_dir}/gtdbtk.*.summary.tsv")
+
+
+
 
 
 

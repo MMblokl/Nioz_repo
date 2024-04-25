@@ -11,6 +11,10 @@
 #1: The sorted bam file of the original reads aligned to the filtered contigs
 #2: The output file
 
+if [[ $# -eq 0 ]] || [[ $# -lt 2 ]] ; then
+    echo 'Not enough or wrong arguments given. Exiting.'
+    exit 0
+fi
 
 for d in ~/binning/*/mapping
 do

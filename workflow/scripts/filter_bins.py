@@ -11,6 +11,11 @@ cutoff_cont = sys.argv[3] #Cutoff for contamination
 bin_dir = sys.argv[4] #Dir with orginal bins
 filt_bin_dir = sys.argv[5] #Dir with the final filtered bins which passed the cutoff
 
+if len(sys.argv) < 6:
+  print("Usage: python3 filter_bins.py /path/to/checkm/file COMPLETENESS_CUTOFF_PLAINTEXT CONTAMINATION_CUTOFF_PLAINTEXT /path/to/bins/dir/ /path/to/filtered/bins/dir/")
+  exit()
+
+
 #The bin stats are written into a file that both shows the bin stats
 # in the way it was used in the report. The file also acts as a flag
 # to signal the end of the filter process each sample.

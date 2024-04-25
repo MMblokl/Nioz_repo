@@ -15,6 +15,12 @@
 # and ID_2.fastq files for reverse reads.
 #$2: Filepath to the project folder.
 
+#Exits if the path is not given.
+if [[ $# -eq 0 ]] || [[ $# -lt 2 ]]; then
+    echo 'This script requires two arguments. Read the readme in the header of this script to see how to use.'
+    echo 'Usage: bash metawrap.sh /path/to/reads/dir/ /path/to/project/'
+    exit 0
+fi
 
 
 #Loop through all sample IDs using the bbmap output folder from the project.

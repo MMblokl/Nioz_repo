@@ -11,6 +11,13 @@
 ###########################
 #$1: Project filepath
 
+#Exits if the path is not given.
+if [[ $# -eq 0 ]] ; then
+    echo 'No file name given. Exiting.'
+    exit 0
+fi
+
+
 for d in $2/bbmap/*/
 do
   id=$(echo $d | awk -F "/" '{print $(NF-1)}')

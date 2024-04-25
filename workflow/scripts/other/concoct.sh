@@ -1,8 +1,21 @@
 #!bin/bash/
+###########################
+#README
+###########################
 #This script runs CONCOCT the same way it was ran during the tool evaluation.
+#This script will only work if a project has already been ran using the workflow.
 
-
+###########
+#ARGUMENTS
+###########
 #$1: Project file path.
+###########
+
+#Exits if the path is not given.
+if [[ $# -eq 0 ]] ; then
+    echo 'No file name given. Exiting.'
+    exit 0
+fi
 
 
 #Loop through all IDs in the bbmap dir. This can be done is any of the directories

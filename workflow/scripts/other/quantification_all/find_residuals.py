@@ -15,6 +15,9 @@ contigs = sys.argv[2] #The file containing the contigs used in the binning proce
 bins_dir = sys.argv[3] #The path to the >>> FILTERED <<< bins.
 output_file = sys.argv[4] #The output file for the _unbinned.txt file.
 
+if len(sys.argv) < 5:
+  print("Usage: python3 find_residuals.py SAMPLE_ID_IN_PLAINTEXT contigs.fasta /path/to/bin/dir/ output_file")
+  exit()
 
 
 os.system("rm -f temp.txt")
