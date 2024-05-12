@@ -100,7 +100,7 @@ if config["mapping"]["replicates"]:
       contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
       reference = "{project}/bbmap/{SAMPLE}/ref/genome/1/summary.txt" #For information, this is not actually used in running BBmap, it is just used as a flag, as this file signifies the reference is complete.
     output:
-      samfile = "{project}/bbmap/{SAMPLE}/{sample2}.sam"
+      samfile = temp("{project}/bbmap/{SAMPLE}/{sample2}.sam")
     shell:
       "bbmap.sh ref={input.contigs} "
       "path={wildcards.project}/bbmap/{wildcards.SAMPLE} " #This line is to make sure that the index isn't created more than once
@@ -112,7 +112,7 @@ if config["mapping"]["replicates"]:
     input:
       samfile = "{project}/bbmap/{SAMPLE}/{sample2}.sam"
     output:
-      bamfile = "{project}/bbmap/{SAMPLE}/{sample2}.BAM"
+      bamfile = temp("{project}/bbmap/{SAMPLE}/{sample2}.BAM")
     shell:
       "samtools view -b {input.samfile} "
       "-o {output.bamfile}"
@@ -154,40 +154,40 @@ else:
       contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
       reference = "{project}/bbmap/{SAMPLE}/ref/genome/1/summary.txt"
     output:
-      "{project}/bbmap/{SAMPLE}/{SAMPLE}.sam"
+      samfile = temp("{project}/bbmap/{SAMPLE}/{SAMPLE}.sam")
     shell:
       "bbmap.sh ref={input.contigs} "
       "path={wildcards.project}/bbmap/{wildcards.SAMPLE}"
       "in={input.fw} in2={input.rv} "
-      "-out={wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.sam "
+      "-out={output.samfile} "
       "-threads={mapping_threads}"
   
   rule bam_convert:
     input:
-      "{project}/bbmap/{SAMPLE}/{SAMPLE}.sam"
+      samfile = "{project}/bbmap/{SAMPLE}/{SAMPLE}.sam"
     output:
-      "{project}/bbmap/{SAMPLE}/{SAMPLE}.bam"
+      bamfile = temp("{project}/bbmap/{SAMPLE}/{SAMPLE}.bam")
     shell:
-      "samtools view -b {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.sam "
-      "-o {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.bam"
+      "samtools view -b {input.samfile} "
+      "-o {output.bamfile}"
   
   rule bam_sort:
     input:
-      "{project}/bbmap/{SAMPLE}/{SAMPLE}.bam"
+      bamfile = "{project}/bbmap/{SAMPLE}/{SAMPLE}.bam"
     output:
-      "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam"
+      sortedbamfile = "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam"
     shell:
-      "samtools sort {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}.bam "
-      "-o {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}_sorted.bam"
+      "samtools sort {input.bamfile} "
+      "-o {output.sortedbamfile}"
   
   rule bam_index:
     input:
-      "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam"
+      sortedbamfile = "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam"
     output:
-      "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam.bai"
+      bamindexfile = "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam.bai"
     shell:
       "samtools index -b -@ " + config["mapping"]["threads"] +
-      " {wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}_sorted.bam "
+      " {input.sortedbamfile} "
       "{wildcards.project}/bbmap/{wildcards.SAMPLE}/{wildcards.SAMPLE}_sorted.bam.bai"
   
   #Same rule for the replicates to make sure both options can equally be used.
@@ -215,22 +215,22 @@ rule gen_depth:
   input:
     "{project}/bbmap/{SAMPLE}/mapping_flag.txt"
   output:
-    "{project}/metabinner/{SAMPLE}/mb2_master_depth.txt"
+    depthfile = "{project}/metabinner/{SAMPLE}/mb2_master_depth.txt"
   shell:
     "./scripts/metabinner_scripts/jgi_summarize_bam_contig_depths "
-    "--outputDepth {wildcards.project}/metabinner/{wildcards.SAMPLE}/mb2_master_depth.txt "
+    "--outputDepth {output.depthfile} "
     "--noIntraDepthVariance {wildcards.project}/bbmap/{wildcards.SAMPLE}/*.bam"
 
 #Generates a coverage file from the contig depth file.
 rule gen_coverage:
   input:
-    "{project}/metabinner/{SAMPLE}/mb2_master_depth.txt"
+    depthfile = "{project}/metabinner/{SAMPLE}/mb2_master_depth.txt"
   output:
-    "{project}/metabinner/{SAMPLE}/coverage_profile.tsv"
+    coverage_profile = "{project}/metabinner/{SAMPLE}/coverage_profile.tsv"
   shell:
-    """cat {wildcards.project}/metabinner/{wildcards.SAMPLE}/mb2_master_depth.txt \
+    """cat {input.depthfile} \
     | awk '{{if ($2>'"1000"') print $0 }}' | \
-    cut -f -1,4- > {wildcards.project}/metabinner/{wildcards.SAMPLE}/coverage_profile.tsv"""
+    cut -f -1,4- > {output.coverage_profile}"""
 
 
 #Create kmer profile and run metabinner

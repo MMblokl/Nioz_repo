@@ -1,5 +1,6 @@
 import sys
 import numpy
+import pandas as pd
 
 
 #Arguments
@@ -54,6 +55,17 @@ with open(f"{quant_file}", "r") as f:
     line = f.readline()
 
 
+def rmsd(estimations, true_list):
+  #Calculate the RMSD using a list of estimations and a list of true values,
+  # both of same size.
+  rmsd = numpy.sqrt(((numpy.array(estimations) - numpy.array(true_list)) ** 2).mean())
+  return rmsd
+
+
+bin_list = list(quantifications.keys())
+bin_list.remove("unbinned")
+
+
 #Get the true abundance for species and genus from the classification names and
 # get the absolute difference in percentage. This absolute value is then averaged over the entire sample.
 
@@ -63,16 +75,24 @@ with open(f"{quant_file}", "r") as f:
 enum_quants_spe = {k: [] for k in headers}
 enum_quants_gen = {k: [] for k in headers} 
 
-with open(f"{outdir}/species_acc.txt", "w") as spo, open(f"{outdir}/genus_acc.txt", "w") as geo, \
-open(f"{outdir}/matched_genus.txt", 'w') as genus_matched, open(f"{outdir}/matched_species.txt", 'w') as species_matched:
-  spo.write("\t".join(headers))
-  spo.write("\n")
-  geo.write("\t".join(headers))
-  geo.write("\n")
-  for bin in quantifications.keys():
-    #We do not want to have the unbinned bin quantification in the final results as this will muddy the accuracy
-    if bin == "unbinned":
-      continue
+with open(f"{outdir}/species_acc.txt", "w") as species_abs_out, open(f"{outdir}/genus_acc.txt", "w") as genus_abs_out, \
+open(f"{outdir}/matched_genus.txt", 'w') as genus_matched, open(f"{outdir}/matched_species.txt", 'w') as species_matched, \
+open(f"{outdir}/RMSD_genus.txt", 'w') as genus_rmsd_out, open(f"{outdir}/RMSD_species.txt", 'w') as species_rmsd_out:
+  
+  #List to calculate the root mean square deviation RMSD between these lists, once per sample.
+  #This is then used instead of the average of the absolute difference.
+  sample_quants = [] # A list contain the dicts of all method quantifications.
+  true_gen = []
+  true_spe = []
+  
+  #Header line
+  headers = "\t".join(headers)
+  species_abs_out.write(f"{headers}\n")
+  genus_abs_out.write(f"{headers}\n")
+  species_rmsd_out.write(f"{headers}\n")
+  genus_rmsd_out.write(f"{headers}\n")
+  
+  for bin in bin_list:
     classification = classifications[bin]
     #The gtdbtk classification on genus level
     genus = classification[0]
@@ -108,8 +128,17 @@ open(f"{outdir}/matched_genus.txt", 'w') as genus_matched, open(f"{outdir}/match
     genus_sum = sum(matched_genus.values())
     species_sum = sum(matched_species.values())
     
+    
+    #This is a list of the true species and genus values to be used in the RMSD
+    #Including a list of all bin_quantification dicts from all bins, which
+    #contain the estimations of each method.
+    true_gen.append(genus_sum)
+    true_spe.append(species_sum)
+    sample_quants.append(bin_quantifications)
+
     for method in bin_quantifications.keys():
       quant = float(bin_quantifications[method])
+      #The difference in genus and species is calculated here, which is used for the absolute next.
       diff_genus = quant - genus_sum
       diff_species = quant - species_sum
       
@@ -117,16 +146,46 @@ open(f"{outdir}/matched_genus.txt", 'w') as genus_matched, open(f"{outdir}/match
       #to use this result to see which method has the least variation
       enum_quants_spe[method].append(abs(diff_species))
       enum_quants_gen[method].append(abs(diff_genus))
-      
-  #We take the average of the difference for each method to create an output here
+  
+  rmsd_genus = []
+  rmsd_species = []
+  #We put the estimations into a list in order to generate the RMSD deviation.
+  #This is done via pandas and numpy
+  sample_quants = pd.DataFrame(sample_quants)
+  for mtd in sample_quants.keys():
+    #A list of all estimations from one specific method
+    estimations = sample_quants[mtd].tolist()
+    estimations = [float(x) for x in estimations] # Create the list as floats and not strings.
+    
+    #We calculate the RMSD using the rmsd() function
+    rmsd_species.append(str(rmsd(estimations, true_spe)))
+    rmsd_genus.append(str(rmsd(estimations, true_gen)))
+  
+  #The RMSD output
+  species_rmsd_out.write("\t".join(rmsd_species))
+  species_rmsd_out.write("\n")
+  genus_rmsd_out.write("\t".join(rmsd_genus))
+  genus_rmsd_out.write("\n")
+  
+  #A pandas dataframe is created in order to match which species were matched to which
+  # bins, which is then output to a file.
+  genus_dev = pd.DataFrame.from_dict(enum_quants_gen)
+  genus_dev.index = bin_list
+  species_dev = pd.DataFrame.from_dict(enum_quants_spe)
+  species_dev.index = bin_list
+  #Write to txt file in csv format.
+  genus_dev.to_csv(f"{outdir}/genus_acc_bins.txt", sep="\t")
+  genus_dev.to_csv(f"{outdir}/species_acc_bins.txt", sep="\t")
+  
+  #This is the output for the absolute differences
   out_spe = [str(numpy.average(x)) for x in enum_quants_spe.values()]
   out_gen = [str(numpy.average(x)) for x in enum_quants_gen.values()]
-    
-  #We write the output
-  geo.write("\t".join(out_gen))
-  geo.write("\n")
-  spo.write("\t".join(out_spe))
-  spo.write("\n")
+  genus_abs_out.write("\t".join(out_gen))
+  genus_abs_out.write("\n")
+  species_abs_out.write("\t".join(out_spe))
+  species_abs_out.write("\n")
+  
+
   
 
 

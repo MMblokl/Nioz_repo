@@ -5,7 +5,7 @@
 # for. All output will be placed in a         #
 # directory with this value.                  #
 ###############################################
-PROJECT: "/export/lv6/user/mblokland/workflow/dnamock"
+PROJECT: "/export/lv6/user/mblokland/workflow/CAMI"
 
 ###############################################
 #                   Samples                   #
@@ -26,8 +26,8 @@ PROJECT: "/export/lv6/user/mblokland/workflow/dnamock"
 # used for more efficient contig binning.     #
 ###############################################
 READS: 
-  ids: ["SRR17380124", "SRR17380125", "SRR17380126", "SRR17380127", "SRR17380128", "SRR17380129", "SRR17380208", "SRR17380210", "SRR17380214", "SRR17380219"]
-  dir: "/export/lv6/user/mblokland/mock_dna/"
+  ids: ["2018.08.15_09.49.32_sample_0", "2018.08.15_09.49.32_sample_1", "2018.08.15_09.49.32_sample_2", "2018.08.15_09.49.32_sample_3", "2018.08.15_09.49.32_sample_4", "2018.08.15_09.49.32_sample_5", "2018.08.15_09.49.32_sample_6", "2018.08.15_09.49.32_sample_7", "2018.08.15_09.49.32_sample_8", "2018.08.15_09.49.32_sample_9", ]
+  dir: "/export/lv6/user/mblokland/camireads/"
 
 ###############################################
 #                   Assembly                  #

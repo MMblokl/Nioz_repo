@@ -1,6 +1,6 @@
 import sys
 import os
-#import numpy
+import numpy
 
 #This script is an altered version of the quant_check.py script to work with only
 # the mOTUs output.
@@ -17,11 +17,12 @@ if len(sys.argv) < 5:
   exit()
 
 
-def get_deviation(file, outfile, genus=False):
+def get_deviation(file, outfile_abs, outfile_rmsd, genus=False):
   #This does the whole reads the given file, and matches it to the true.
   # genus tells the function whether the given file is genus classification
-  #values = []
-  with open(f"{file}", "r") as f, open(f"{outfile}", 'w') as o:
+  est_abundance_list = []
+  true_abundance_list = []
+  with open(f"{file}", "r") as f, open(f"{outfile_abs}", 'w') as o, open(f"{outfile_rmsd}", 'w') as out_rmsd:
     f.readline()
     line = f.readline()
     while line != "":
@@ -29,7 +30,7 @@ def get_deviation(file, outfile, genus=False):
       t = line.strip().split("\t")
       
       #The estimated abundance, converted to complete percentages
-      abundance = float(t[1]) * 100
+      est_abundance = float(t[1]) * 100
       
       if genus:
         #This line only works for the genus specific classification due to
@@ -60,17 +61,21 @@ def get_deviation(file, outfile, genus=False):
       #The if is to make sure that the non-matched species do not get mixed up into
       # the deviation file.
       if true_sum > 0:
-        deviation = abs(abundance - true_sum)
-        o.write(f"{classification}\t{deviation}\n")
-        #values.append(deviation)
+        deviation_abs = abs(est_abundance - true_sum)
+        est_abundance_list.append(est_abundance)
+        true_abundance_list.append(true_sum)
+        o.write(f"{classification}\t{deviation_abs}\n")
 
       #Next estimation
       line = f.readline()
-    #o.write(f"{sampleid}\t{numpy.average(values)}\n")
+    
+    #One singular root mean square deviation value is created for one sample to see how accurate mOTUs is.
+    rmsd = numpy.sqrt(((numpy.array(est_abundance_list) - numpy.array(true_abundance_list)) ** 2).mean())
+    out_rmsd.write(f"{rmsd}\n")
 
 
-deviation_species = get_deviation(f"{motus_prof_dir}/motu_species.txt", f"{outdir}/motu_species_acc.txt")
-deviation_genus = get_deviation(f"{motus_prof_dir}/motu_genus.txt", f"{outdir}/motu_genus_acc.txt", True)
+deviation_species = get_deviation(f"{motus_prof_dir}/motu_species.txt", f"{outdir}/motu_species_acc.txt", f"{outdir}/motu_species_rmsd.txt")
+deviation_genus = get_deviation(f"{motus_prof_dir}/motu_genus.txt", f"{outdir}/motu_genus_acc.txt", f"{outdir}/motu_genus_rmsd.txt", True)
 
   
   
