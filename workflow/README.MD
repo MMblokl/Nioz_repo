@@ -1,4 +1,4 @@
-#Important
+##Important
 GTDB-TK assigns loads the entire database into system memory when it is ran.
 This makes it that the gtbtk rule in the workflow will likely output an error
  when more than 2 instances of GTDB-TK are running.
