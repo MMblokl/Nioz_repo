@@ -1,8 +1,8 @@
-##README for running every single quantification method.
+## README for running every single quantification method.
 The scripts in this directory generate the results for every quantification
 method tested during the project.
 
-##How to use
+## How to use
 The script quant_runall.sh runs every quantification method on the results of
 the snakemake workflow.
 The complete output of the workflow up until the classifications.csv files from
@@ -10,12 +10,12 @@ GTDB-TK are required.
 
 All files should be left in the same configuration as the workflow put them in.
 
-##NOTE
+## NOTE
 It is required for the python package numpy to be available from the environment
 you run the script from.
 
 
-###True abundances
+### True abundances
 If you wish to also generate the absolute deviation data with true abundances,
 a single line in the "quant_runall.sh" script must be altered.
 On line 34, the script "quant_check.py" can be run if this line is uncommented.
@@ -49,5 +49,5 @@ the classifications from GTDBTK.
 
 Example files will be left in the same repository directory as this README.
 
-##Running the script.
+## Running the script.
 [USER]$ bash quant_runall.sh PROJECT_LOCATION

@@ -1,4 +1,4 @@
-##Important
+## Important
 GTDB-TK assigns loads the entire database into system memory when it is ran.
 This makes it that the gtbtk rule in the workflow will likely output an error
  when more than 2 instances of GTDB-TK are running.
@@ -7,7 +7,7 @@ If this occurs, make sure to delete the incomplete runs of GTDB-TK and run
  snakemake using only 2 or 1 job at a time.
 
 
-##Config
+## Config
 Before running the workflow, make sure that you have the config configured
 to your liking, and that all your samples are accessible in the sample
 directory given in the config.
@@ -16,7 +16,7 @@ It is very important that the path to this directory is accessible from the dire
 Since some files will be read through python, a "~/directory" might not work.
 
 
-##Reads
+## Reads
 The forward and reverse reads must be ordered as such:
 $SAMPLE_1.fastq for the forward facing reads.
 $SAMPLE_2.fastq for the reverse facing reads.
@@ -24,7 +24,7 @@ $SAMPLE_2.fastq for the reverse facing reads.
 These reads must be present in the directory "reads/", the full dirpath of which
 can be changed in the config.
 
-##Programs and packages
+## Programs and packages
 The following is a list of programs and packages required to run the workflow.
 Make sure the workflow is run in an environment with the following python packages installed:
 If the error 
