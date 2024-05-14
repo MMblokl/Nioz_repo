@@ -8,6 +8,9 @@ If you want to install samtools, metaSPAdes and BBMap via apt install, make sure
 This can be line with this command: sudo add-apt-repository -r universe
 
 If you do not have access to apt install, make sure to link the bin of these tools to PATH so that they are accessible by snakemake.
+These tools are only accessible by snakemake if they are linked in the PATH.
+If the tools are installed in separate conda environments, they cannot be linked like the other tools.
+If they are installed in one conda environment, just simply run the workflow in that environment, given that snakemake is also installed.
 
 ## Wrapper scripts
 Certain tools might need you to install them via a separate conda environment.
@@ -17,6 +20,8 @@ Make sure to add the environment load command into the wrapper scripts for the f
 - CheckM
 - GTDB-TK
 
+If these tools are also installed on the same environment as the others or are accessable via PATH, it should run fine given they function properly.
+Just leave the environment load command space empty in the wrapper scripts. This is already the case on default.
 
 ### snakemake
 The easiest way to install snakemake is via apt-install, but conda works as well.

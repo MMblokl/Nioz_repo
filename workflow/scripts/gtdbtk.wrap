@@ -12,9 +12,7 @@
 ####
 #Load the environment
 ####
-#Replace these lines to what you would use to load in your gtdbtk environment
-
-source $HOME/.bashrc.conda3 gtdbtk
+#Add the load command under here.
 
 
 ####

@@ -29,9 +29,7 @@
 #Loading the environment for MetaBinner
 #As long as metabinner can access all the python modules, it should work fine.
 ####
-
-source $HOME/.bashrc.conda3 metabinner_env
-
+#Add the load command under here.
 
 
 ####
