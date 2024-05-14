@@ -1,0 +1,23 @@
+####
+#This script runs checkm.
+####
+
+####
+#Arguments
+####
+#$1: Usable threads
+#$2: The project folder
+#$3: The sample ID
+
+
+#####
+#LOADING ENVIRONMENT
+# Left blank on default.
+#####
+
+
+####
+#Running the tool.
+####
+
+checkm lineage_wf -t $1 -x fna $2/metabinner/$3/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ $2/checkm/$3/

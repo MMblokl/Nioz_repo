@@ -10,6 +10,10 @@ classification_file = sys.argv[3] #File that contains the bin classifications
 outdir = sys.argv[4]
 
 
+if len(sys.argv) < 5:
+  print("Not enough arguments given.\nUsage: python3 quant_check.py est_quant_file.txt TRUE_abundance.txt classifications.tsv /path/to/outdir/")
+  exit()
+
 
 classifications = {}
 #Read the classifications of genus and species level into a dict to be used for matching the true and estimated classifications

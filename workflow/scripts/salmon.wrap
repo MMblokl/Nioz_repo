@@ -1,0 +1,27 @@
+####
+#Wrapper script for running salmon.
+####
+
+
+#Arguments:
+#1: The sampleid
+#2: the contigs used for binning
+#3: The forward reads
+#4: The reverse reads
+#5: The ouput directory
+#6: Threads
+
+
+####
+#LOADING ENVIONMENT
+#Blank on default.
+####
+
+
+####
+#Running salmon.
+####
+mkdir -p $5/index
+
+salmon index -p $6 -t $2 -i $5/index
+salmon quant -i $5/index/ --libType IU -1 $3 -2 $4 -o $5 --meta -p $6

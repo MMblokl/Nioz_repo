@@ -33,11 +33,12 @@
 source $HOME/.bashrc.conda3 metabinner_env
 
 
+
 ####
 #Running metabinner
 ####
 
 python3 ./scripts/metabinner_scripts/gen_kmer.py $1 $2 $3 $4/kmerprofile.csv
 
-/export/lv5/software/MetaBinner/run_metabinner.sh -a $1 -o $4 -d $4/coverage_profile.tsv -k $4/kmerprofile.csv -p $5 -t $6
+bash $4/run_metabinner.sh -a $1 -o $4 -d $4/coverage_profile.tsv -k $4/kmerprofile.csv -p $5 -t $6
 

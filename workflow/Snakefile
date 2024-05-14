@@ -12,14 +12,14 @@ project = config["PROJECT"]
 
 rule all:
   input:
-    expand("{project}/gtdbtk/{SAMPLE}/classification.tsv", project=project, SAMPLE=config["READS"]["ids"])
+    expand("{project}/quantification/{SAMPLE}/quant_table.txt", project=project, SAMPLE=config["READS"]["ids"])
     
 
 #
 ##################
 # File structure #
 ##################
-# This rule initates the sample structure usinig the script "init_sample.sh".
+# This rule initates the sample structure using the script "init_sample.sh".
 
 rule structure:
   input:
@@ -29,7 +29,7 @@ rule structure:
     f1="{project}/samples/{SAMPLE}/rawdata/fw.fastq",
     f2="{project}/samples/{SAMPLE}/rawdata/rv.fastq"
   shell:
-    "scripts/init_sample.sh {wildcards.project} {wildcards.SAMPLE} {input.fw} {input.rv}"
+    "bash ./scripts/init_sample.sh {wildcards.project} {wildcards.SAMPLE} {input.fw} {input.rv}"
 
 
 assembly_threads = config["assembly"]["threads"]
@@ -74,7 +74,7 @@ rule filter_contigs:
   output:
     filt_contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta"
   shell:
-    "seqtk seq -L {min_contiglen} {input.contigs} > {output.filt_contigs}"
+    "reformat.sh {input.contigs} fastaminlen={min_contiglen} out={output.filt_contigs}"
 
 
 #Create the reference so that snakemake does not attempt to align to an index that is not yet completed.
@@ -208,7 +208,8 @@ cont_cutoff = config["binning"]["cutoff_cont"]
 ###########
 # Binning #
 ###########
-# Hello
+# All the binning is done under here. Flags are used to make use all the mapping
+# has been done correctly so that no samples get ignored.
 
 #Generates the contig depth file from all alignments in the bbmap dir.
 rule gen_depth:
@@ -257,9 +258,10 @@ rule checkm_eval:
   output:
     "{project}/checkm/{SAMPLE}/lineage.ms"
   shell:
-    "checkm lineage_wf -t {binning_threads} -x fna "
-    "{wildcards.project}/metabinner/{wildcards.SAMPLE}/metabinner_res/ensemble_res/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ensemble_3logtrans/addrefined2and3comps/greedy_cont_weight_3_mincomp_50.0_maxcont_15.0_bins/ "
-    "{wildcards.project}/checkm/{wildcards.SAMPLE}/"
+    "bash ./scripts/checkm.wrap "
+    "{binning_threads} "
+    "{wildcards.project} "
+    "{wildcards.SAMPLE}"
 
 
 #Filter the bins based on the checkM evaluation. The cutoff can be changed in the config.
@@ -305,13 +307,75 @@ rule get_classification:
     "{wildcards.project}/gtdbtk/{wildcards.SAMPLE}"
 
 
+
+quant_threads = config["quantification"]["threads"]
 ###########
+#Abundance estimation
+###########
+#Uses salmon on the contigs to calculate the TPM per contig.
+#This is then matched back to the contigs in the next rule.
+rule salm_quant:
+  input:
+    filt_contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
+    fw = "{project}/samples/{SAMPLE}/rawdata/fw.fastq",
+    rv = "{project}/samples/{SAMPLE}/rawdata/rv.fastq"
+  output:
+    "{project}/quantification/{SAMPLE}/salmon/quant.sf"
+  shell:
+    "bash ./scripts/salmon.wrap "
+    "{wildcards.SAMPLE} "
+    "{input.filt_contigs} "
+    "{input.fw} "
+    "{input.rv} "
+    "{wildcards.project}/quantification/{wildcards.SAMPLE}/salmon/ "
+    "{quant_threads}"
 
 
+#Runs the script to find all contigs not found in any of the final bins.
+#This then "deflates" the quantification numbers in order to increase accuracy.
+rule find_residuals:
+  input:
+    bin_filt_flag = "{project}/filtered_bins/{SAMPLE}/bin_stats.tsv",
+    filt_contigs = "{project}/bbmap/{SAMPLE}/contigs_filtered.fasta",
+    salm_out = "{project}/quantification/{SAMPLE}/salmon/quant.sf"
+  output:
+    unbinned_contigs = "{project}/quantification/{SAMPLE}/unbinned_contigs.txt"
+  shell:
+    "python3 ./scripts/find_residuals.py "
+    "{wildcards.SAMPLE} "
+    "{input.filt_contigs} "
+    "{wildcards.project}/filtered_bins/{wildcards.SAMPLE}/ "
+    "{wildcards.SAMPLE} "
+    "{output.unbinned_contigs}"
 
 
+#Get the read mapping info from the BAM files.
+rule readmapping:
+  input:
+    bamfile = "{project}/bbmap/{SAMPLE}/{SAMPLE}_sorted.bam",
+    salm_out = "{project}/quantification/{SAMPLE}/salmon/quant.sf"
+  output:
+    readmapping_file = "{project}/quantification/{SAMPLE}/readmapping.txt"
+  shell:
+    "bash ./scripts/get_read_mapping.sh "
+    "{input.bamfile} "
+    "{output.readmapping_file} "
 
 
-
-
-
+#The abundance estimation
+rule quantify:
+  input:
+    bin_filt_flag = "{project}/filtered_bins/{SAMPLE}/bin_stats.tsv",
+    salmon_quant = "{project}/quantification/{SAMPLE}/salmon/quant.sf",
+    unbinned_contigs = "{project}/quantification/{SAMPLE}/unbinned_contigs.txt",
+    readmapping = "{project}/quantification/{SAMPLE}/readmapping.txt"
+  output:
+    quant_table = "{project}/quantification/{SAMPLE}/quant_table.txt"
+  shell:
+    "python3 ./scripts/quantify.py "
+    "{wildcards.project}/filtered_bins/{wildcards.SAMPLE}/ "
+    "{input.unbinned_contigs} "
+    "{input.salmon_quant} "
+    "{input.readmapping} "
+    "{wildcards.SAMPLE} "
+    "{output.quant_table}"

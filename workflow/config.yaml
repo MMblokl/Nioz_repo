@@ -4,8 +4,10 @@
 # The name of the project the pipeline is used#
 # for. All output will be placed in a         #
 # directory with this value.                  #
+# If possible, make sure it does NOT end with #
+# a "/"                                       #
 ###############################################
-PROJECT: "/export/lv6/user/mblokland/workflow/CAMI"
+PROJECT: "/export/lv11/projects/mblokland/CAMI"
 
 ###############################################
 #                   Samples                   #
@@ -107,14 +109,19 @@ binning:
 #                 used by gtdbtk.             #
 ###############################################
 classification:
-  cpus: 12
+  cpus: 16
 
 ###############################################
 #               Quantification                #
 ###############################################
-# among us:       The hit game among us.      #
+# The abundance estimation options.           #
+#                                             #
+# Threads:        The amount of threads used  #
+#                 for the steps of            #
+#                 quantification.             #
 ###############################################
-
+quantification:
+  threads: 16
 
 
 
