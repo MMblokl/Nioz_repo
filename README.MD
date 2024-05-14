@@ -28,10 +28,11 @@ can be changed in the config.
 The following is a list of programs and packages required to run the workflow.
 Read the installation guide for more info.
 Make sure the workflow is run in an environment with the following python packages installed:
-###python modules:
+
+### python modules:
   - numpy
 
-###List of tools:
+### List of tools:
 - metaSPAdes
 - BBmap
 - SAMtools
