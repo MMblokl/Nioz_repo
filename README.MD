@@ -1,10 +1,13 @@
 ## Important
-GTDB-TK assigns loads the entire database into system memory when it is ran.
-This makes it that the gtbtk rule in the workflow will likely output an error
- when more than 2 instances of GTDB-TK are running.
-When this results in an error, this wil output as a pplacer error.
-If this occurs, make sure to delete the incomplete runs of GTDB-TK and run
- snakemake using only 2 or 1 job at a time.
+On certain servers, GTDB-TK might not work with more than 2 jobs runnin parralel at once.
+This is because GTDB-TK loads the entire database into the working memory which can cause issues on clusters.
+To avoid issues with this, make sure to not run more than two jobs.
+
+Make sure to setup all tools by following the installation guide.
+If the tools are already installed, locate the environments for said tools and add the load command into the wrapper scripts.
+
+## Running the workflow.
+snakemake --configfile=config.yaml -j 2 --cores * all
 
 
 ## Config
@@ -58,12 +61,6 @@ PATH so that snakemake can run them like normal.
 
 GTDB-TK and MetaBinner use wrapper scripts to run, make sure to add the line used
 for loading their respective environments into these scripts.
-
-## How to run:
-After installing and setting up all tools, make sure to add the samplenames into the config and add the complete path to the project directory.
-Run the workflow like so:
-
-snakemake --configfile=config.yaml --cores * --jobs * all
 
 Again, GTDB-TK WILL crash if more than 1-2 instances are run due to how it loads the database into the memory.
 If you wish to run the tool all in one go, make sure to only allow 1-2 jobs to run at a time.
