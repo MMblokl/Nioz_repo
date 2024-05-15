@@ -7,7 +7,7 @@
 # If possible, make sure it does NOT end with #
 # a "/"                                       #
 ###############################################
-PROJECT: "/export/lv11/projects/mblokland/CAMI"
+PROJECT: "/home/user/PROJECT"
 
 ###############################################
 #                   Samples                   #
@@ -19,17 +19,20 @@ PROJECT: "/export/lv11/projects/mblokland/CAMI"
 #                                             #
 # -dir:       The system path to the directory#
 #             containing the sequencing reads.#
-# -ids:       A list containing the sample ids of the#
+# -ids:       A list containing the sample ids# 
+#	      of the			      #
 #             reads you wish to use, that are #
 #             present in the "dir" directory. #
+#	      If possible, do not end it with #
+#	      a "/"  			      #
 #                                             #
 # If you use multiple samples, these have to  #
 # be replicates of each other, which will be  #
 # used for more efficient contig binning.     #
 ###############################################
 READS: 
-  ids: ["2018.08.15_09.49.32_sample_0", "2018.08.15_09.49.32_sample_1", "2018.08.15_09.49.32_sample_2", "2018.08.15_09.49.32_sample_3", "2018.08.15_09.49.32_sample_4", "2018.08.15_09.49.32_sample_5", "2018.08.15_09.49.32_sample_6", "2018.08.15_09.49.32_sample_7", "2018.08.15_09.49.32_sample_8", "2018.08.15_09.49.32_sample_9", ]
-  dir: "/export/lv6/user/mblokland/camireads/"
+  ids: ["SAMPLE1", "SAMPLE2", "SAMPLE3",]
+  dir: "/home/user/SAMPLES"
 
 ###############################################
 #                   Assembly                  #
@@ -95,7 +98,7 @@ mapping:
 binning:
   min_contiglen: 1000
   kmer_len: 4
-  metabinner_env: "/export/lv5/software/MetaBinner/"
+  metabinner_env: "/home/user/conda/envs/metabinner_env/MetaBinner/"
   threads: 16
   cutoff_comp: 20
   cutoff_cont: 15

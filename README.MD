@@ -59,3 +59,14 @@ PATH so that snakemake can run them like normal.
 GTDB-TK and MetaBinner use wrapper scripts to run, make sure to add the line used
 for loading their respective environments into these scripts.
 
+## How to run:
+After installing and setting up all tools, make sure to add the samplenames into the config and add the complete path to the project directory.
+Run the workflow like so:
+
+snakemake --configfile=config.yaml --cores * --jobs * all
+
+Again, GTDB-TK WILL crash if more than 1-2 instances are run due to how it loads the database into the memory.
+If you wish to run the tool all in one go, make sure to only allow 1-2 jobs to run at a time.
+
+If you add more jobs, the workflow will work up until the gtdb-tk classification rules.
+Just re-run the workflow and it will continue from where it left off, just make sure to remove the unfunished gtdb-tk runs.
