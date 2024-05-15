@@ -64,11 +64,9 @@ A blank conda environment should work in most cases as long as the python versio
 If all else fails, a blank machine with only python and conda installed will work.
 
 ### checkM
-Follow the installation guide on: https://github.com/Ecogenomics/CheckM/wiki/Installation#how-to-install-checkm
-To run checkM, the database folder needs to downloaded and linked as well.
-This is also explaned on the installation guide
+CheckM is included with MetaBinner.
+Make sure to use the same environment as metabinner for the "checkm.wrap" script.
 
-Make sure to add the environment load command into the "checkm.wrap" scripts in the scripts directory.
 
 ### GTDBK-TK
 Follow the guide from https://github.com/Ecogenomics/GTDBTk
