@@ -23,8 +23,7 @@ PROJECT: "/home/user/PROJECT"
 #	      of the			      #
 #             reads you wish to use, that are #
 #             present in the "dir" directory. #
-#	      If possible, do not end it with #
-#	      a "/"  			      #
+#	      End it WITH a "/"		      #
 #                                             #
 # If you use multiple samples, these have to  #
 # be replicates of each other, which will be  #
@@ -32,7 +31,7 @@ PROJECT: "/home/user/PROJECT"
 ###############################################
 READS: 
   ids: ["SAMPLE1", "SAMPLE2", "SAMPLE3",]
-  dir: "/home/user/SAMPLES"
+  dir: "/home/user/SAMPLES/"
 
 ###############################################
 #                   Assembly                  #
